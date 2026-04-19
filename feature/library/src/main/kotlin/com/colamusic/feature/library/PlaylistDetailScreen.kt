@@ -55,19 +55,28 @@ fun PlaylistDetailScreen(
             )
         }
 
-        if (state.loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        when {
+            state.loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
-            return@Column
+            state.error != null -> {
+                Text("加载出错：${state.error}", color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp))
+            }
+            else -> PlaylistBody(state, vm, onOpenNowPlaying)
         }
-        state.error?.let {
-            Text("加载出错：$it", color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(16.dp))
-            return@Column
-        }
+    }
+}
 
-        LazyColumn(Modifier.fillMaxSize()) {
+@Composable
+private fun PlaylistBody(
+    state: PlaylistDetailState,
+    vm: PlaylistDetailViewModel,
+    onOpenNowPlaying: () -> Unit,
+) {
+    LazyColumn(Modifier.fillMaxSize()) {
             item {
                 Column(Modifier.padding(16.dp)) {
                     Text(
@@ -93,7 +102,6 @@ fun PlaylistDetailScreen(
                     onClick = { vm.playFrom(i); onOpenNowPlaying() },
                 )
             }
-        }
     }
 }
 

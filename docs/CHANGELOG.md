@@ -2,6 +2,37 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.4] — 2026-04-19
+
+### Fixed (the actual actual crash)
+
+Unminified stack trace from the Fold 7 pointed at the real bug:
+
+```
+java.lang.IndexOutOfBoundsException: Index -1 out of bounds for length 0
+    at androidx.compose.runtime.Stack.pop(Stack.kt:26)
+    at androidx.compose.runtime.ComposerImpl.exitGroup(Composer.kt:2333)
+    at androidx.compose.runtime.ComposerImpl.end(Composer.kt:2499)
+    at androidx.compose.runtime.ComposerImpl.endGroup(Composer.kt:1607)
+    at androidx.compose.runtime.ComposerImpl.endRoot(Composer.kt:1483)
+    at androidx.compose.runtime.ComposerImpl.doCompose(Composer.kt:3317)
+```
+
+`Stack.pop` on an empty stack during `exitGroup` = unbalanced composable
+groups. Cause: `return@Column` early-returns inside `@Composable` lambdas
+in `AlbumDetailScreen`, `ArtistDetailScreen`, and `PlaylistDetailScreen`.
+The Compose compiler plugin emits start-/end-group markers around each
+call; a non-local `return` skips some `end` calls, leaving the slot table
+imbalanced, and on the next recompose it blows up on `endRoot → exitGroup`.
+
+Refactored all three screens to use a top-level `when { … loading … error
+… else }` block that delegates the happy path to a dedicated
+`AlbumBody` / `ArtistAlbumsGrid` / `PlaylistBody` composable. No more
+early returns inside composable lambdas.
+
+### Changed
+- versionCode 7, versionName 0.3.4.
+
 ## [0.3.1] — 2026-04-19
 
 ### Fixed

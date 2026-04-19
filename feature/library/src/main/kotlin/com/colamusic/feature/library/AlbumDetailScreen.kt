@@ -82,23 +82,32 @@ fun AlbumDetailScreen(
             }
         }
 
-        if (state.loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        when {
+            state.loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
-            return@Column
+            state.error != null -> {
+                Text(
+                    "加载出错：${state.error}",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            else -> AlbumBody(state, policy, vm, onOpenNowPlaying)
         }
+    }
+}
 
-        state.error?.let {
-            Text(
-                "加载出错：$it",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(16.dp),
-            )
-            return@Column
-        }
-
-        LazyColumn(Modifier.fillMaxSize()) {
+@Composable
+private fun AlbumBody(
+    state: AlbumDetailState,
+    policy: com.colamusic.core.player.StreamPolicy,
+    vm: AlbumDetailViewModel,
+    onOpenNowPlaying: () -> Unit,
+) {
+    LazyColumn(Modifier.fillMaxSize()) {
             item {
                 AlbumHeader(
                     album = state.album,
@@ -123,7 +132,6 @@ fun AlbumDetailScreen(
                     },
                 )
             }
-        }
     }
 }
 

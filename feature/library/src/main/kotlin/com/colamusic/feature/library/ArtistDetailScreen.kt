@@ -71,29 +71,38 @@ fun ArtistDetailScreen(
             )
         }
 
-        if (state.loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        when {
+            state.loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
-            return@Column
+            state.error != null -> {
+                Text(
+                    "加载出错：${state.error}",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            else -> ArtistAlbumsGrid(state.albums, policy, onAlbumClick)
         }
-        state.error?.let {
-            Text(
-                "加载出错：$it",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(16.dp),
-            )
-            return@Column
-        }
+    }
+}
 
-        LazyVerticalGrid(
+@Composable
+private fun ArtistAlbumsGrid(
+    albums: List<Album>,
+    policy: com.colamusic.core.player.StreamPolicy,
+    onAlbumClick: (Album) -> Unit,
+) {
+    LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 140.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(state.albums, key = { it.id }) { album ->
+            items(albums, key = { it.id }) { album ->
                 val cover = remember(album.coverArt) { policy.coverArtUrl(album.coverArt, 320) }
                 Column(Modifier.clickable { onAlbumClick(album) }) {
                     Box(
@@ -124,6 +133,5 @@ fun ArtistDetailScreen(
                     )
                 }
             }
-        }
     }
 }
