@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ColaMusic" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+    <style name="Theme.ColaMusic.Splash" parent="Theme.ColaMusic">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>

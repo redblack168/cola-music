@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="cola_session.xml"/>
+    <exclude domain="file" path="lyrics/"/>
+    <exclude domain="file" path="music/"/>
+</full-backup-content>

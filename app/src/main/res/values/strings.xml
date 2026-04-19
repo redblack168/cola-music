@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cola Music</string>
+    <string name="app_name_cn">可乐音乐</string>
+
+    <string name="login_title">登录 Navidrome</string>
+    <string name="login_server_url">服务器地址</string>
+    <string name="login_server_url_hint">http://192.168.x.x:4533</string>
+    <string name="login_username">用户名</string>
+    <string name="login_password">密码</string>
+    <string name="login_action">登录</string>
+    <string name="login_error_network">无法连接服务器</string>
+    <string name="login_error_credentials">用户名或密码错误</string>
+
+    <string name="nav_home">首页</string>
+    <string name="nav_library">媒体库</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_settings">设置</string>
+
+    <string name="quality_original">原始</string>
+    <string name="quality_transcoded">转码</string>
+
+    <string name="lyrics_none">暂无歌词</string>
+    <string name="lyrics_rematch">重新匹配</string>
+    <string name="lyrics_source">来源：%1$s</string>
+
+    <string name="settings_quality">播放质量</string>
+    <string name="settings_quality_original">原始音质（推荐）</string>
+    <string name="settings_quality_lossless_preferred">无损优先</string>
+    <string name="settings_quality_mobile_smart">移动网络智能模式</string>
+
+    <string name="settings_lyrics_sources">歌词源</string>
+    <string name="settings_lyrics_navidrome">Navidrome 结构化歌词（推荐）</string>
+    <string name="settings_lyrics_lrclib">LRCLIB 社区库（推荐）</string>
+    <string name="settings_lyrics_netease">网易云音乐（非官方，默认关闭）</string>
+    <string name="settings_lyrics_qq">QQ 音乐（非官方，默认关闭）</string>
+
+    <string name="notification_channel_playback">播放控制</string>
+    <string name="notification_channel_downloads">下载</string>
+</resources>

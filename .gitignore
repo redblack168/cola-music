@@ -1,0 +1,32 @@
+# Secrets
+.env.local
+local.properties
+
+# Gradle
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Android
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+release-signing.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / misc
+*.log
+hs_err_pid*
