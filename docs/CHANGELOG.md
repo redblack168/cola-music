@@ -2,6 +2,21 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.22] — 2026-04-19
+
+### Changed
+- **Icon: actual full cat face.** Previous pipelines (v4/v6) detected the
+  face using silhouette row-density, which for Cola's long-hair coat
+  picked up chest fluff as "still face" and cropped too low. v8 pipeline:
+  measure cheek-to-cheek width in the top 40 % of the silhouette (so
+  body fluff is excluded), set `face_height = cheek_width` (cat faces are
+  roughly square from ear-tip to chin). Crop a square centered on the
+  face's horizontal center-of-mass. Result: both blue eyes, both ears,
+  nose, and chin all inside the tile with the face filling end-to-end.
+- versionCode 25, versionName 0.3.22.
+
+
+
 ## [0.3.21] — 2026-04-19
 
 ### Changed
