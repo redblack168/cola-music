@@ -20,8 +20,8 @@ android {
         applicationId = "com.colamusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 21
-        versionName = "0.3.18"
+        versionCode = 22
+        versionName = "0.3.19"
         vectorDrawables { useSupportLibrary = true }
         resourceConfigurations.addAll(listOf("en", "zh-rCN", "zh-rTW"))
     }

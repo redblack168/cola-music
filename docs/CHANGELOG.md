@@ -2,6 +2,20 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.19] — 2026-04-19
+
+### Changed
+- **Launcher icon: restored the photo of Cola (the cat).** I
+  misunderstood the v0.3.18 "get it back" as "bring back the vector mark";
+  the user was asking for the photo of their actual cat Cola — the
+  namesake of the whole app. Put the rembg v5 pipeline output back:
+  face-centered crop (4% top / 10% bottom margin), alpha-matting=True for
+  clean edges, 1 px alpha erosion to kill rim noise. This is Cola, not a
+  generic silhouette.
+- versionCode 22, versionName 0.3.19.
+
+
+
 ## [0.3.18] — 2026-04-19
 
 ### Changed
