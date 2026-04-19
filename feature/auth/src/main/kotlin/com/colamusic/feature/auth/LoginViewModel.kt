@@ -3,6 +3,7 @@ package com.colamusic.feature.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.colamusic.core.common.Outcome
+import com.colamusic.core.network.ActiveServerPreferences
 import com.colamusic.core.network.SessionProbe
 import com.colamusic.core.network.ServerType
 import com.colamusic.core.network.SubsonicConfig
@@ -18,6 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val repo: MusicServerRepository,
+    private val activeServer: ActiveServerPreferences,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginState())
@@ -45,6 +47,10 @@ class LoginViewModel @Inject constructor(
         val normalized = normalizeUrl(s.url)
         _state.update { it.copy(busy = true, error = null) }
         viewModelScope.launch {
+            // Dispatcher reads ActiveServerPreferences to pick the backend;
+            // set it BEFORE calling login() so the right repo receives the
+            // SubsonicConfig payload (baseUrl + user + password).
+            activeServer.setActive(s.serverType)
             when (val outcome = repo.login(SubsonicConfig(normalized, s.user, s.password))) {
                 is Outcome.Success -> {
                     _state.update { it.copy(busy = false, probe = outcome.value, error = null) }

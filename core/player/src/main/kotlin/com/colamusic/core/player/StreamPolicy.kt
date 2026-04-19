@@ -7,8 +7,11 @@ import com.colamusic.core.model.QualityPolicy
 import com.colamusic.core.model.Song
 import com.colamusic.core.model.StreamInfo
 import com.colamusic.core.model.StreamKind
+import com.colamusic.core.network.ActiveServerPreferences
+import com.colamusic.core.network.ServerType
 import com.colamusic.core.network.SessionStore
 import com.colamusic.core.network.SubsonicUrls
+import com.colamusic.core.network.plex.PlexSessionStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,20 +20,20 @@ import javax.inject.Singleton
  * Single gate between a [Song] and the Media3 player. Never bypass this when
  * setting media items — the UI quality chip and diagnostics depend on it.
  *
- * Default policy is [QualityPolicy.Original]: always request `format=raw` with
- * no `maxBitRate`. Navidrome will then serve the original bytes. Only under
- * [QualityPolicy.MobileSmart] on a metered connection do we request transcoded
- * audio by default.
+ * Default policy is [QualityPolicy.Original]: always request the original
+ * bytes. For Subsonic that means `format=raw` with no `maxBitRate`; for
+ * Plex we use the direct `Part.key` URL (the [Song.path] we mapped at
+ * ingest) with the token appended. Only [QualityPolicy.MobileSmart] on
+ * a metered connection requests transcoded audio by default.
  */
 @Singleton
 class StreamPolicy @Inject constructor(
     @ApplicationContext private val context: Context,
     private val sessionStore: SessionStore,
+    private val plexSession: PlexSessionStore,
+    private val activeServer: ActiveServerPreferences,
 ) {
     fun resolve(song: Song, policy: QualityPolicy, allowOnMobileData: Boolean = false): StreamInfo {
-        val cfg = sessionStore.current.value
-            ?: return StreamInfo("", StreamKind.Unknown, null, null, null)
-
         val metered = isMeteredConnection()
         val kind: StreamKind
         val formatRaw: Boolean
@@ -55,7 +58,15 @@ class StreamPolicy @Inject constructor(
             }
         }
 
-        val url = SubsonicUrls.streamUrl(cfg, song.id, formatRaw = formatRaw, maxBitRate = maxBitRate)
+        val url = when (activeServer.valueNow()) {
+            ServerType.Plex -> plexStreamUrl(song) ?: ""
+            else -> {
+                val cfg = sessionStore.current.value
+                    ?: return StreamInfo("", StreamKind.Unknown, null, null, null)
+                SubsonicUrls.streamUrl(cfg, song.id, formatRaw = formatRaw, maxBitRate = maxBitRate)
+            }
+        }
+
         return StreamInfo(
             url = url,
             kind = kind,
@@ -67,8 +78,33 @@ class StreamPolicy @Inject constructor(
 
     fun coverArtUrl(coverArtId: String?, size: Int = 640): String? {
         if (coverArtId == null) return null
-        val cfg = sessionStore.current.value ?: return null
-        return SubsonicUrls.coverArtUrl(cfg, coverArtId, size)
+        return when (activeServer.valueNow()) {
+            ServerType.Plex -> plexCoverUrl(coverArtId, size)
+            else -> {
+                val cfg = sessionStore.current.value ?: return null
+                SubsonicUrls.coverArtUrl(cfg, coverArtId, size)
+            }
+        }
+    }
+
+    // ---- Plex helpers ----
+
+    private fun plexStreamUrl(song: Song): String? {
+        val plex = plexSession.current.value ?: return null
+        // song.path was mapped from PlexPart.key, e.g. "/library/parts/123/1234567890/file.flac".
+        val path = song.path ?: return null
+        val base = plex.baseUrl.trimEnd('/')
+        return "$base$path?X-Plex-Token=${plex.token}"
+    }
+
+    private fun plexCoverUrl(thumbPath: String, size: Int): String? {
+        val plex = plexSession.current.value ?: return null
+        val base = plex.baseUrl.trimEnd('/')
+        // Use Plex's photo transcoder so we can downscale. It needs the
+        // original thumb URL encoded as `url=...`.
+        val inner = if (thumbPath.startsWith("http")) thumbPath else "$base$thumbPath"
+        val encoded = java.net.URLEncoder.encode(inner, Charsets.UTF_8)
+        return "$base/photo/:/transcode?width=$size&height=$size&url=$encoded&X-Plex-Token=${plex.token}"
     }
 
     private fun isMeteredConnection(): Boolean {

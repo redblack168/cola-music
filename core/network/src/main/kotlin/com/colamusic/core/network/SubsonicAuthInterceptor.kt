@@ -2,7 +2,9 @@ package com.colamusic.core.network
 
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
+import okhttp3.Protocol
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import java.security.MessageDigest
 import java.security.SecureRandom
 
@@ -28,8 +30,20 @@ class SubsonicAuthInterceptor(
             return chain.proceed(original)
         }
 
-        val cfg = sessionProvider()
-            ?: throw IllegalStateException("No Subsonic session; login required")
+        // If there's no Subsonic session but something tried to hit a
+        // /rest/ URL anyway (e.g. the NavidromeLyricsProvider firing after
+        // the user switched to a Plex session), synthesize a 401 instead
+        // of throwing. Throwing from an async OkHttp dispatcher escapes
+        // as a fatal uncaught exception in some code paths (Media3's
+        // OkHttpDataSource is one); a Response lets the caller handle it
+        // like any ordinary HTTP failure.
+        val cfg = sessionProvider() ?: return Response.Builder()
+            .request(original)
+            .protocol(Protocol.HTTP_1_1)
+            .code(401)
+            .message("No Subsonic session")
+            .body("".toResponseBody(null))
+            .build()
 
         val baseHttpUrl = cfg.baseUrl.trimEnd('/').toHttpUrlOrNull()
             ?: throw IllegalArgumentException("Invalid server URL: ${cfg.baseUrl}")

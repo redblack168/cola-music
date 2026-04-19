@@ -2,6 +2,38 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.1] — 2026-04-19
+
+### Added
+- **Plex backend.** First full non-Subsonic implementation. Login
+  exchanges username+password at `plex.tv/users/sign_in.json` for an
+  account token, probes the server's sections, and pins the first
+  `type=artist` library. All MusicServerRepository verbs (newest, recent,
+  frequent, starred ≈ userRating≥4stars, all albums, artists, artist
+  albums, album songs, random, search via `/hubs/search`, playlists,
+  scrobble, star) routed to Plex endpoints when Plex is the active type.
+- Domain mapping Plex Metadata → Cola Song/Album/Artist/Playlist.
+- Streaming URL uses the Plex `Part.key` with `X-Plex-Token` query
+  parameter (no transcoding pipeline yet — original bytes only).
+- Cover art URLs route through `/photo/:/transcode` for size-bounded
+  thumbnails.
+- `PlexSessionStore` (EncryptedSharedPreferences) parallel to the
+  Subsonic one; stable per-install `X-Plex-Client-Identifier` generated
+  once and reused.
+- `ActiveServerPreferences` (DataStore) remembers which backend is live;
+  new `DispatchingMusicServerRepository` delegates every call to the
+  right concrete repo.
+- Login screen: Plex chip is now enabled and working.
+
+### Changed
+- `StreamPolicy` is backend-aware: routes stream + cover URL generation
+  to Subsonic or Plex based on active server.
+- `SessionGateViewModel` considers any saved session (Subsonic *or*
+  Plex) as logged-in.
+- versionCode 28, versionName 0.4.1.
+
+
+
 ## [0.4.0] — 2026-04-19
 
 ### Added

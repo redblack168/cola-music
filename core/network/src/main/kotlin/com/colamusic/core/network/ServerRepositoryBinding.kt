@@ -7,15 +7,14 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Feature VMs inject [MusicServerRepository]; Hilt resolves it to
- * [SubsonicRepository] for now. When new backends (Jellyfin, Emby, Plex,
- * Kodi) land, this binding becomes a `Provides` that dispatches on the
- * configured server type.
+ * Feature VMs inject [MusicServerRepository]; Hilt resolves to the
+ * dispatching wrapper which routes calls to the backend matching
+ * [ActiveServerPreferences.active].
  */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class MusicServerRepositoryModule {
     @Binds
     @Singleton
-    abstract fun bindRepo(impl: SubsonicRepository): MusicServerRepository
+    abstract fun bindRepo(impl: DispatchingMusicServerRepository): MusicServerRepository
 }

@@ -25,8 +25,7 @@ enum class ServerType(
     Plex(
         id = "plex",
         displayName = "Plex",
-        supported = false,
-        comingInVersion = "0.4.2",
+        supported = true,
     );
 
     companion object {

@@ -7,6 +7,7 @@ import com.colamusic.core.lyrics.LyricsProvider
 import com.colamusic.core.lyrics.LyricsRequest
 import com.colamusic.core.model.LyricLine
 import com.colamusic.core.model.LyricsSource
+import com.colamusic.core.network.SessionStore
 import com.colamusic.core.network.SubsonicApi
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,11 +20,17 @@ import javax.inject.Singleton
 @Singleton
 class NavidromeLyricsProvider @Inject constructor(
     private val api: SubsonicApi,
+    private val sessionStore: SessionStore,
 ) : LyricsProvider {
     override val source: LyricsSource = LyricsSource.Navidrome
     override val safeDefault: Boolean = true
 
     override suspend fun lookup(request: LyricsRequest): List<LyricsCandidate> {
+        // Short-circuit when there's no Subsonic session — the user is on
+        // Plex/Emby. Letting the API call proceed would synthesize a 401
+        // via SubsonicAuthInterceptor, which is harmless but wasteful.
+        if (sessionStore.current.value == null) return emptyList()
+
         val out = ArrayList<LyricsCandidate>(2)
 
         // 1. Structured lyrics (OpenSubsonic)
