@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
@@ -16,9 +17,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -124,6 +127,76 @@ fun SettingsScreen(
             modifier = Modifier.clickable { onOpenDownloads() },
         )
 
+        Spacer(Modifier.height(20.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(12.dp))
+        Text("歌词来源 · Lyrics sources", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "建议保留前两项。后两项是非官方公开 API,可能违反其服务条款,默认关闭。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ListItem(
+            headlineContent = { Text("Navidrome / OpenSubsonic") },
+            supportingContent = { Text("你的服务器自带的歌词,推荐") },
+            trailingContent = {
+                Switch(state.lyricsNavidrome, onCheckedChange = vm::setNavidromeLyrics)
+            },
+        )
+        ListItem(
+            headlineContent = { Text("LRCLIB") },
+            supportingContent = { Text("公开免费的歌词数据库,欧美流行较全") },
+            trailingContent = {
+                Switch(state.lyricsLrclib, onCheckedChange = vm::setLrclibLyrics)
+            },
+        )
+
+        var showNeteaseConfirm by remember { mutableStateOf(false) }
+        var showQQConfirm by remember { mutableStateOf(false) }
+        ListItem(
+            headlineContent = { Text("网易云音乐(非官方)") },
+            supportingContent = { Text("覆盖最全的华语歌词源,但为非官方接口") },
+            trailingContent = {
+                Switch(
+                    checked = state.lyricsNetease,
+                    onCheckedChange = { checked ->
+                        if (checked) showNeteaseConfirm = true
+                        else vm.setNeteaseLyrics(false)
+                    },
+                )
+            },
+        )
+        ListItem(
+            headlineContent = { Text("QQ 音乐(非官方)") },
+            supportingContent = { Text("华语覆盖补充,同为非官方接口") },
+            trailingContent = {
+                Switch(
+                    checked = state.lyricsQQ,
+                    onCheckedChange = { checked ->
+                        if (checked) showQQConfirm = true
+                        else vm.setQQLyrics(false)
+                    },
+                )
+            },
+        )
+        if (showNeteaseConfirm) UnofficialProviderDialog(
+            providerName = "网易云音乐",
+            onConfirm = {
+                vm.setNeteaseLyrics(true)
+                showNeteaseConfirm = false
+            },
+            onDismiss = { showNeteaseConfirm = false },
+        )
+        if (showQQConfirm) UnofficialProviderDialog(
+            providerName = "QQ 音乐",
+            onConfirm = {
+                vm.setQQLyrics(true)
+                showQQConfirm = false
+            },
+            onDismiss = { showQQConfirm = false },
+        )
+
         Spacer(Modifier.height(16.dp))
         HorizontalDivider()
         Spacer(Modifier.height(12.dp))
@@ -152,6 +225,30 @@ fun SettingsScreen(
             )
         }
     }
+}
+
+@Composable
+private fun UnofficialProviderDialog(
+    providerName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("开启 $providerName 歌词源?") },
+        text = {
+            Text(
+                "$providerName 的歌词接口并未公开授权,可能违反其服务条款,接口也可能随时变更或失效。开启代表你接受由此带来的风险。",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("我了解并开启") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
 }
 
 @Composable

@@ -27,30 +27,27 @@ abstract class LyricsProviderModule {
 }
 
 /**
- * Default gate: ALL providers ON.
+ * DataStore-backed gate. Default posture (see [LyricsPreferences]):
+ *   - Navidrome / LRCLIB: ON
+ *   - NetEase / QQ: OFF — user must opt-in via Settings → Lyrics → Advanced
+ *     after tapping "I understand"
  *
- * Rationale: a user-facing "search every lyrics source" behavior is the
- * correct default for a Chinese-music-first client — LRCLIB's catalog tilts
- * toward Western pop, so without NetEase/QQ a large chunk of the CJK library
- * silently misses. Providers are still ToS-caveated (see each implementation)
- * and the user can toggle any source off in Settings → Lyrics.
- *
- * When an app-level LyricsSourcesEnabled provider is installed (reading from
- * DataStore), Hilt will prefer it over this @Singleton default via regular
- * binding precedence.
+ * This posture is chosen for Play Store safety. NetEase and QQ are
+ * unofficial public APIs without explicit permission; defaulting them off
+ * keeps us in policy-safe territory while still letting power users turn
+ * them on.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object DefaultLyricsGateModule {
     @Provides @Singleton
-    fun gate(): LyricsSourcesEnabled = object : LyricsSourcesEnabled {
-        private val on = setOf(
-            LyricsSource.Navidrome,
-            LyricsSource.NavidromeLegacy,
-            LyricsSource.Lrclib,
-            LyricsSource.Netease,
-            LyricsSource.QQMusic,
-        )
-        override fun isEnabled(source: LyricsSource) = source in on
+    fun gate(prefs: LyricsPreferences): LyricsSourcesEnabled = object : LyricsSourcesEnabled {
+        override fun isEnabled(source: LyricsSource): Boolean = when (source) {
+            LyricsSource.Navidrome, LyricsSource.NavidromeLegacy -> prefs.navidromeEnabled.value
+            LyricsSource.Lrclib -> prefs.lrclibEnabled.value
+            LyricsSource.Netease -> prefs.neteaseEnabled.value
+            LyricsSource.QQMusic -> prefs.qqEnabled.value
+            LyricsSource.Manual, LyricsSource.None -> false
+        }
     }
 }

@@ -2,6 +2,31 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.23] — 2026-04-19
+
+### Added
+- **Privacy policy** at `docs/PRIVACY.md`, served via GitHub Pages at
+  <https://redblack168.github.io/cola-music/PRIVACY>. Covers: no backend,
+  no analytics, no telemetry; on-device storage inventory; network
+  destinations; permissions rationale. Required for Play Store submission.
+- **GitHub Pages landing** at <https://redblack168.github.io/cola-music/>.
+  `docs/_config.yml` uses jekyll-theme-minimal + kramdown with
+  `permalink: /:basename` so URLs read `/PRIVACY` not `/PRIVACY.html`.
+
+### Changed
+- **NetEase / QQ Music lyrics default to OFF.** Both are unofficial public
+  APIs without explicit permission and are a Play Store policy risk if
+  enabled by default. Users who want them flip Settings → Lyrics 来源 →
+  switch; the switch opens an "我了解并开启" confirmation dialog
+  explaining the TOS caveat before it commits. Navidrome + LRCLIB remain
+  on by default.
+- New `LyricsPreferences` DataStore (per-source booleans) wired through a
+  new `DefaultLyricsGateModule` that reads `.value` from the cached
+  StateFlows — no runBlocking on the resolver hot path.
+- versionCode 26, versionName 0.3.23.
+
+
+
 ## [0.3.22] — 2026-04-19
 
 ### Changed
