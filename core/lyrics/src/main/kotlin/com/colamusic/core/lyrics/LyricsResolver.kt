@@ -36,6 +36,25 @@ class LyricsResolver @Inject constructor(
     private val enabledGate: LyricsSourcesEnabled,
 ) {
 
+    /**
+     * Returns every candidate from every enabled provider, sorted best-first
+     * by score. Used by the manual lyrics picker so the user can override the
+     * auto-pick — see [LyricsRepository.candidatesFor].
+     */
+    suspend fun allCandidates(request: LyricsRequest): List<Pair<LyricsCandidate, Float>> {
+        val enabled = providers.filter { enabledGate.isEnabled(it.source) }
+            .sortedByDescending { it.providerPriority() }
+        if (enabled.isEmpty()) return emptyList()
+        val out = ArrayList<Pair<LyricsCandidate, Float>>(16)
+        for (p in enabled) {
+            val candidates = runCatching {
+                withContext(Dispatchers.IO) { p.lookup(request) }
+            }.getOrDefault(emptyList())
+            for (c in candidates) out.add(c to score(request, c).total)
+        }
+        return out.sortedByDescending { it.second }
+    }
+
     suspend fun resolve(request: LyricsRequest): Lyrics? {
         val enabledProviders = providers.filter { enabledGate.isEnabled(it.source) }
             .sortedByDescending { it.providerPriority() }

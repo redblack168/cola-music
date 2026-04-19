@@ -2,6 +2,7 @@ package com.colamusic.feature.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.colamusic.core.lyrics.LyricsCandidateView
 import com.colamusic.core.lyrics.LyricsRepository
 import com.colamusic.core.lyrics.LyricsRequest
 import com.colamusic.core.model.Lyrics
@@ -10,10 +11,14 @@ import com.colamusic.core.model.StreamKind
 import com.colamusic.core.player.PlayerController
 import com.colamusic.core.player.StreamPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -68,4 +73,51 @@ class NowPlayingViewModel @Inject constructor(
     fun previous() = controller.previous()
     fun seekTo(ms: Long) = controller.seekTo(ms)
     fun play(s: Song) = controller.play(s)
+
+    // ----- Manual lyric picker -----
+
+    private val _picker = MutableStateFlow(LyricsPickerState())
+    val picker: StateFlow<LyricsPickerState> = _picker.asStateFlow()
+
+    /** Open the picker for the currently-playing song. Fetches every
+     *  candidate from every enabled provider — best-first by score. */
+    fun openLyricsPicker() {
+        val s = song.value ?: return
+        _picker.update { it.copy(visible = true, loading = true, candidates = emptyList()) }
+        viewModelScope.launch {
+            val list = lyricsRepo.candidatesFor(
+                LyricsRequest(
+                    songId = s.id,
+                    title = s.title,
+                    artist = s.artist,
+                    album = s.album,
+                    durationSec = s.duration,
+                    track = s.track,
+                    disc = s.disc,
+                )
+            )
+            _picker.update { it.copy(loading = false, candidates = list) }
+        }
+    }
+
+    fun dismissLyricsPicker() {
+        _picker.update { LyricsPickerState() }
+    }
+
+    /** User chose this candidate from the picker — pin it as the cache entry
+     *  for the current song and update the visible lyrics immediately. */
+    fun chooseCandidate(view: LyricsCandidateView) {
+        val s = song.value ?: return
+        viewModelScope.launch {
+            lyricsRepo.useCandidate(s.id, view)
+            dismissLyricsPicker()
+        }
+    }
 }
+
+data class LyricsPickerState(
+    val visible: Boolean = false,
+    val loading: Boolean = false,
+    val candidates: List<LyricsCandidateView> = emptyList(),
+)
+

@@ -26,10 +26,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -92,6 +94,14 @@ fun NowPlayingScreen(
     val pos by vm.position.collectAsStateWithLifecycle()
     val dur by vm.duration.collectAsStateWithLifecycle()
     val lyrics by vm.lyrics.collectAsStateWithLifecycle()
+    val picker by vm.picker.collectAsStateWithLifecycle()
+    if (picker.visible) {
+        LyricsPickerSheet(
+            state = picker,
+            onDismiss = vm::dismissLyricsPicker,
+            onPick = vm::chooseCandidate,
+        )
+    }
 
     // HorizontalPager: swipe left/right between cover (page 0) and lyrics (page 1).
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
@@ -105,6 +115,20 @@ fun NowPlayingScreen(
         ),
     )
 
+    Box(Modifier.fillMaxSize()) {
+        // Cola-the-cat lives at the bottom of the layer stack as a soft
+        // backdrop. Pre-blurred 720px JPEG bundled in /res/drawable-nodpi.
+        // alpha 0.16 means it's ambient, not "we put a giant cat behind your
+        // music app". The vertical gradient on top guarantees text legibility.
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(
+                com.colamusic.feature.player.R.drawable.cola_cat_backdrop
+            ),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            alpha = 0.16f,
+            modifier = Modifier.fillMaxSize(),
+        )
     Column(
         Modifier.fillMaxSize().background(bgBrush).padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
@@ -148,6 +172,7 @@ fun NowPlayingScreen(
                     coverUrl = remember(song?.coverArt) { vm.coverUrl() },
                     onSeek = { vm.seekTo(it) },
                     onTap = { coScope.launch { pagerState.animateScrollToPage(0) } },
+                    onPick = { vm.openLyricsPicker() },
                 )
             }
         }
@@ -249,6 +274,7 @@ fun NowPlayingScreen(
             }
         }
     }
+    } // close cat-backdrop Box
 }
 
 @Composable
@@ -378,6 +404,7 @@ private fun LyricsPanel(
     coverUrl: String?,
     onSeek: (Long) -> Unit,
     onTap: () -> Unit,
+    onPick: () -> Unit,
 ) {
     Box(
         Modifier.fillMaxSize().clickable(onClick = onTap),
@@ -411,13 +438,32 @@ private fun LyricsPanel(
                 ),
         )
         if (lyrics == null || lyrics.isEmpty) {
-            Text(
-                stringResource(com.colamusic.feature.player.R.string.np_searching_lyrics),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    stringResource(com.colamusic.feature.player.R.string.np_searching_lyrics),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Spacer(Modifier.height(12.dp))
+                androidx.compose.material3.TextButton(onClick = onPick) {
+                    Text("手动选择歌词 · Pick manually")
+                }
+            }
         } else {
             SyncedLyricsView(lyrics, positionMs, onSeek)
+            // Floating "重新匹配" pill in the top-right of the lyrics panel —
+            // small, unobtrusive, but lets the user override the auto-pick
+            // when the wrong song's lyrics get matched.
+            androidx.compose.material3.AssistChip(
+                onClick = onPick,
+                label = { Text("重新匹配") },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+            )
         }
     }
 }
@@ -533,4 +579,109 @@ private fun formatMs(ms: Long): String {
     val m = total / 60
     val s = total % 60
     return "%d:%02d".format(m, s)
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun LyricsPickerSheet(
+    state: LyricsPickerState,
+    onDismiss: () -> Unit,
+    onPick: (com.colamusic.core.lyrics.LyricsCandidateView) -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                "选择歌词来源 · Pick lyrics source",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "排序按匹配分数,越上面越准。点击一条会立即应用并写入缓存。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            if (state.loading) {
+                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                }
+            } else if (state.candidates.isEmpty()) {
+                Text(
+                    "没有候选歌词。检查 Settings → Lyrics 看是否所有源都开了。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 24.dp),
+                )
+            } else {
+                androidx.compose.foundation.lazy.LazyColumn(
+                    Modifier.fillMaxWidth().heightIn(max = 480.dp),
+                ) {
+                    items(state.candidates.size) { i ->
+                        val c = state.candidates[i]
+                        LyricsCandidateRow(c, onPick = { onPick(c) })
+                        if (i < state.candidates.lastIndex)
+                            androidx.compose.material3.HorizontalDivider()
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun LyricsCandidateRow(
+    c: com.colamusic.core.lyrics.LyricsCandidateView,
+    onPick: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onPick)
+            .padding(vertical = 10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.AssistChip(
+                onClick = onPick,
+                label = { Text(c.source.displayName) },
+                modifier = Modifier.height(28.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                c.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "%.2f".format(c.score),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            buildString {
+                if (c.artist.isNotBlank()) append(c.artist)
+                c.album?.takeIf { it.isNotBlank() }?.let {
+                    if (isNotEmpty()) append(" · ")
+                    append(it)
+                }
+                append(" · ${c.lineCount} 行 · ")
+                append(if (c.isSynced) "synced" else "plain")
+                c.durationSec?.let { append(" · ${it}s") }
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (c.preview.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                c.preview,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                maxLines = 3,
+            )
+        }
+    }
 }

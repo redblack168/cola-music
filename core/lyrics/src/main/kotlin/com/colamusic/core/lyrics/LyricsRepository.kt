@@ -67,6 +67,42 @@ class LyricsRepository @Inject constructor(
         return loadFor(request, forceRefresh = true)
     }
 
+    /** Returns every candidate from every enabled provider, best-first.
+     *  Used by the manual-pick UI when the auto-resolver chose wrong. */
+    suspend fun candidatesFor(request: LyricsRequest): List<LyricsCandidateView> =
+        resolver.allCandidates(request).map { (c, score) ->
+            LyricsCandidateView(
+                source = c.source,
+                title = c.title.orEmpty(),
+                artist = c.artist.orEmpty(),
+                album = c.album,
+                durationSec = c.durationSec,
+                isSynced = c.isSynced,
+                lineCount = c.lines.size,
+                score = score,
+                preview = c.lines.take(3).joinToString("\n") { it.text }.take(200),
+                raw = c.raw,
+                lines = c.lines,
+            )
+        }
+
+    /** User picked a specific candidate from the list — write it as the
+     *  authoritative cache entry for [songId] and emit it. */
+    suspend fun useCandidate(songId: String, view: LyricsCandidateView) {
+        val lyrics = Lyrics(
+            songId = songId,
+            source = view.source,
+            isSynced = view.isSynced,
+            lines = view.lines,
+            confidence = 1f,           // user-picked is canonical
+            fetchedAtMs = System.currentTimeMillis(),
+            raw = view.raw,
+        )
+        dao.delete(songId)
+        persist(lyrics)
+        _current.value = lyrics
+    }
+
     fun clearCurrent() { _current.value = null }
 
     private fun readCached(entity: LyricCacheEntity): Lyrics? {
