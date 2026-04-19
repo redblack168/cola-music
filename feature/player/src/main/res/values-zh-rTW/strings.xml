@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="now_playing_title">正在播放</string>
+    <string name="np_cover">封面</string>
+    <string name="np_lyrics">歌詞</string>
+    <string name="np_searching_lyrics">暫無歌詞 · 正在搜尋…</string>
+</resources>

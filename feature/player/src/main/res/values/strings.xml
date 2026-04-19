@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="now_playing_title">Now Playing</string>
+    <string name="np_cover">Cover</string>
+    <string name="np_lyrics">Lyrics</string>
+    <string name="np_searching_lyrics">No lyrics yet · searching…</string>
+</resources>

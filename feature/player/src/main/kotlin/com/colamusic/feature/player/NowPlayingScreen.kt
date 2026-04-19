@@ -1,15 +1,14 @@
 package com.colamusic.feature.player
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,10 +46,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -63,7 +62,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -72,6 +73,7 @@ import com.colamusic.core.model.StreamKind
 
 private enum class NowPlayingMode { Cover, Lyrics }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
@@ -84,11 +86,10 @@ fun NowPlayingScreen(
     val dur by vm.duration.collectAsStateWithLifecycle()
     val lyrics by vm.lyrics.collectAsStateWithLifecycle()
 
-    var mode by rememberSaveable { mutableStateOf(NowPlayingMode.Cover) }
+    // HorizontalPager: swipe left/right between cover (page 0) and lyrics (page 1).
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
+    val coScope = rememberCoroutineScope()
 
-    // Derive the gradient top from the palette's primaryContainer so the
-    // "music-app backdrop" follows whichever color theme the user picked in
-    // Settings without pulling an app-module CompositionLocal into this module.
     val bgBrush = Brush.verticalGradient(
         colors = listOf(
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f)
@@ -103,51 +104,71 @@ fun NowPlayingScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) }
             Spacer(Modifier.size(8.dp))
-            Text("正在播放", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(com.colamusic.feature.player.R.string.now_playing_title),
+                style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.weight(1f))
             QualityChip(kind, song?.suffix, song?.bitRate)
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         Row(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxWidth(),
         ) {
             ModeToggleChip(
-                selected = mode == NowPlayingMode.Cover,
+                selected = pagerState.currentPage == 0,
                 icon = Icons.Default.Album,
-                label = "封面",
-                onClick = { mode = NowPlayingMode.Cover },
+                label = stringResource(com.colamusic.feature.player.R.string.np_cover),
+                onClick = { coScope.launch { pagerState.animateScrollToPage(0) } },
             )
             Spacer(Modifier.width(8.dp))
             ModeToggleChip(
-                selected = mode == NowPlayingMode.Lyrics,
+                selected = pagerState.currentPage == 1,
                 icon = Icons.Default.Lyrics,
-                label = "歌词",
-                onClick = { mode = NowPlayingMode.Lyrics },
+                label = stringResource(com.colamusic.feature.player.R.string.np_lyrics),
+                onClick = { coScope.launch { pagerState.animateScrollToPage(1) } },
             )
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
-        AnimatedContent(
-            targetState = mode,
-            transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(220)) },
-            label = "nowplaying-mode",
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier.fillMaxWidth().weight(1f),
-        ) { m ->
-            when (m) {
-                NowPlayingMode.Cover -> CoverPanel(
+        ) { page ->
+            when (page) {
+                0 -> CoverPanel(
                     coverUrl = remember(song?.coverArt) { vm.coverUrl() },
                     title = song?.title,
                     isPlaying = isPlaying,
-                    onTap = { mode = NowPlayingMode.Lyrics },
+                    onTap = { coScope.launch { pagerState.animateScrollToPage(1) } },
                 )
-                NowPlayingMode.Lyrics -> LyricsPanel(
+                1 -> LyricsPanel(
                     lyrics = lyrics,
                     positionMs = pos,
                     coverUrl = remember(song?.coverArt) { vm.coverUrl() },
                     onSeek = { vm.seekTo(it) },
-                    onTap = { mode = NowPlayingMode.Cover },
+                    onTap = { coScope.launch { pagerState.animateScrollToPage(0) } },
+                )
+            }
+        }
+
+        // Page indicator dots
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(2) { i ->
+                val active = pagerState.currentPage == i
+                val color = if (active) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                Box(
+                    Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(width = if (active) 20.dp else 6.dp, height = 6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(color),
                 )
             }
         }
@@ -295,7 +316,7 @@ private fun LyricsPanel(
         )
         if (lyrics == null || lyrics.isEmpty) {
             Text(
-                "暂无歌词,正在搜索…",
+                stringResource(com.colamusic.feature.player.R.string.np_searching_lyrics),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyLarge,
             )

@@ -17,9 +17,19 @@ class SubsonicAuthInterceptor(
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
+        val original = chain.request()
+
+        // Only rewrite Subsonic-bound requests (path contains /rest/). Third-party
+        // calls on the shared OkHttpClient — LRCLIB, NetEase, QQ Music for lyric
+        // lookups — must pass through untouched. Previously this interceptor
+        // rewrote every request to the Navidrome host, which is why LRCLIB
+        // silently failed for English (and all) songs before v0.3.7.
+        if (!original.url.encodedPath.contains("/rest/")) {
+            return chain.proceed(original)
+        }
+
         val cfg = sessionProvider()
             ?: throw IllegalStateException("No Subsonic session; login required")
-        val original = chain.request()
 
         val baseHttpUrl = cfg.baseUrl.trimEnd('/').toHttpUrlOrNull()
             ?: throw IllegalArgumentException("Invalid server URL: ${cfg.baseUrl}")

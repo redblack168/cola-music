@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">可樂音樂</string>
+    <string name="app_name_cn">可樂音樂</string>
+
+    <string name="login_title">登入 Navidrome</string>
+    <string name="login_server_url">伺服器位址</string>
+    <string name="login_server_url_hint">http://192.168.x.x:4533</string>
+    <string name="login_username">使用者名稱</string>
+    <string name="login_password">密碼</string>
+    <string name="login_action">登入</string>
+    <string name="login_error_network">無法連線伺服器</string>
+    <string name="login_error_credentials">使用者名稱或密碼錯誤</string>
+
+    <string name="nav_home">首頁</string>
+    <string name="nav_library">媒體庫</string>
+    <string name="nav_search">搜尋</string>
+    <string name="nav_settings">設定</string>
+
+    <string name="now_playing">正在播放</string>
+    <string name="np_cover">封面</string>
+    <string name="np_lyrics">歌詞</string>
+    <string name="lyrics_searching">暫無歌詞 · 正在搜尋…</string>
+    <string name="lyrics_source_label">來源：%1$s</string>
+    <string name="lyrics_rematch">重新比對</string>
+
+    <string name="quality_original">原始</string>
+    <string name="quality_transcoded">轉碼</string>
+    <string name="quality_downloaded">離線</string>
+
+    <string name="settings_title">設定</string>
+    <string name="settings_quality">播放品質</string>
+    <string name="settings_quality_original">原始音質（推薦）</string>
+    <string name="settings_quality_original_desc">永遠要求 format=raw,停用伺服器轉碼。</string>
+    <string name="settings_quality_lossless_preferred">無損優先</string>
+    <string name="settings_quality_lossless_preferred_desc">等同於原始音質;若伺服器被迫降級會提示。</string>
+    <string name="settings_quality_mobile_smart">行動網路智慧模式</string>
+    <string name="settings_quality_mobile_smart_desc">Wi-Fi 原始 / 行動資料 320kbps 智慧切換。</string>
+
+    <string name="settings_allow_mobile_original">行動資料亦允許原始音質</string>
+    <string name="settings_allow_mobile_original_desc">開啟後,智慧模式也會在流量下直推無損。</string>
+    <string name="settings_wifi_only_cache">僅 Wi-Fi 下載快取</string>
+    <string name="settings_wifi_only_cache_desc">避免流量消耗,預設開啟。</string>
+
+    <string name="settings_theme">色彩主題</string>
+    <string name="settings_theme_desc">可樂紅 / 海洋藍 / 森林綠 / 日落橘 / 梅子紫 / 午夜黑 / Material You</string>
+    <string name="settings_downloads">下載管理</string>
+    <string name="settings_downloads_desc">查看與管理已下載的歌曲</string>
+    <string name="settings_language">語言</string>
+    <string name="settings_language_desc">預設跟隨手機系統語言</string>
+    <string name="settings_logout">登出</string>
+
+    <string name="settings_lyrics_sources">歌詞來源</string>
+    <string name="settings_lyrics_navidrome">Navidrome 結構化歌詞（推薦）</string>
+    <string name="settings_lyrics_lrclib">LRCLIB 社群庫（推薦）</string>
+    <string name="settings_lyrics_netease">網易雲音樂（非官方,預設關閉）</string>
+    <string name="settings_lyrics_qq">QQ 音樂（非官方,預設關閉）</string>
+
+    <string name="theme_picker_title">色彩主題</string>
+    <string name="theme_picker_desc">選擇 App 的色彩風格。播放頁的漸變背景、進度條、目前歌詞都會跟著改變。</string>
+    <string name="theme_cola_red">可樂紅</string>
+    <string name="theme_ocean_blue">海洋藍</string>
+    <string name="theme_forest_green">森林綠</string>
+    <string name="theme_sunset_orange">日落橘</string>
+    <string name="theme_plum_purple">梅子紫</string>
+    <string name="theme_midnight_mono">午夜黑</string>
+    <string name="theme_dynamic">Material You（動態取色）</string>
+    <string name="theme_dynamic_requires">需要 Android 12 以上</string>
+
+    <string name="language_picker_title">語言</string>
+    <string name="language_picker_desc">預設跟隨手機系統語言,也可以固定為某一種語言。</string>
+    <string name="language_system">跟隨系統（預設）</string>
+    <string name="language_en">English</string>
+    <string name="language_zh_cn">简体中文</string>
+    <string name="language_zh_tw">繁體中文</string>
+
+    <string name="tab_albums">專輯</string>
+    <string name="tab_artists">藝人</string>
+    <string name="tab_playlists">播放清單</string>
+    <string name="tab_favorites">收藏</string>
+
+    <string name="play_all">全部播放</string>
+    <string name="download_album">下載專輯</string>
+    <string name="queued">已加入佇列</string>
+    <string name="loading_error">載入失敗：%1$s</string>
+    <string name="song_count_and_length">%1$d 首 · %2$s</string>
+    <string name="album_count_x">%1$d 張專輯</string>
+
+    <string name="downloads_title">下載</string>
+    <string name="downloads_in_progress">進行中 (%1$d)</string>
+    <string name="downloads_completed">已完成 (%1$d)</string>
+    <string name="downloads_empty">還沒有下載任何歌曲。開啟專輯頁,點選「下載專輯」即可開始。</string>
+    <string name="downloads_continue">繼續下載</string>
+
+    <string name="search_hint">搜尋歌曲 / 專輯 / 藝人</string>
+    <string name="search_section_artists">藝人</string>
+    <string name="search_section_albums">專輯</string>
+    <string name="search_section_songs">歌曲</string>
+
+    <string name="diagnostics_title">診斷面板</string>
+    <string name="diagnostics_extensions">OpenSubsonic 擴充</string>
+    <string name="diagnostics_events">事件記錄 (%1$d)</string>
+
+    <string name="notification_channel_playback">播放控制</string>
+    <string name="notification_channel_downloads">下載</string>
+</resources>

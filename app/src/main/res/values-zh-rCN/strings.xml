@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">可乐音乐</string>
+    <string name="app_name_cn">可乐音乐</string>
+
+    <string name="login_title">登录 Navidrome</string>
+    <string name="login_server_url">服务器地址</string>
+    <string name="login_server_url_hint">http://192.168.x.x:4533</string>
+    <string name="login_username">用户名</string>
+    <string name="login_password">密码</string>
+    <string name="login_action">登录</string>
+    <string name="login_error_network">无法连接服务器</string>
+    <string name="login_error_credentials">用户名或密码错误</string>
+
+    <string name="nav_home">首页</string>
+    <string name="nav_library">媒体库</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_settings">设置</string>
+
+    <string name="now_playing">正在播放</string>
+    <string name="np_cover">封面</string>
+    <string name="np_lyrics">歌词</string>
+    <string name="lyrics_searching">暂无歌词 · 正在搜索…</string>
+    <string name="lyrics_source_label">来源：%1$s</string>
+    <string name="lyrics_rematch">重新匹配</string>
+
+    <string name="quality_original">原始</string>
+    <string name="quality_transcoded">转码</string>
+    <string name="quality_downloaded">离线</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_quality">播放质量</string>
+    <string name="settings_quality_original">原始音质（推荐）</string>
+    <string name="settings_quality_original_desc">始终请求 format=raw,禁用服务器转码。</string>
+    <string name="settings_quality_lossless_preferred">无损优先</string>
+    <string name="settings_quality_lossless_preferred_desc">与原始音质等效;若服务器被迫降级会提示。</string>
+    <string name="settings_quality_mobile_smart">移动网络智能</string>
+    <string name="settings_quality_mobile_smart_desc">Wi-Fi 原始 / 移动数据 320kbps 智能切换。</string>
+
+    <string name="settings_allow_mobile_original">移动数据也允许原始音质</string>
+    <string name="settings_allow_mobile_original_desc">打开后,智能模式在流量下也会直推无损。</string>
+    <string name="settings_wifi_only_cache">仅 Wi-Fi 下载缓存</string>
+    <string name="settings_wifi_only_cache_desc">避免流量消耗,默认开启。</string>
+
+    <string name="settings_theme">颜色主题</string>
+    <string name="settings_theme_desc">可乐红 / 海洋蓝 / 森林绿 / 日落橘 / 梅子紫 / 午夜黑 / Material You</string>
+    <string name="settings_downloads">下载管理</string>
+    <string name="settings_downloads_desc">查看和管理已下载的歌曲</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_desc">默认跟随手机系统语言</string>
+    <string name="settings_logout">退出登录</string>
+
+    <string name="settings_lyrics_sources">歌词源</string>
+    <string name="settings_lyrics_navidrome">Navidrome 结构化歌词（推荐）</string>
+    <string name="settings_lyrics_lrclib">LRCLIB 社区库（推荐）</string>
+    <string name="settings_lyrics_netease">网易云音乐（非官方,默认关闭）</string>
+    <string name="settings_lyrics_qq">QQ 音乐（非官方,默认关闭）</string>
+
+    <string name="theme_picker_title">颜色主题</string>
+    <string name="theme_picker_desc">选择应用的颜色风格。播放页的渐变背景、进度条、当前歌词都会跟着改变。</string>
+    <string name="theme_cola_red">可乐红</string>
+    <string name="theme_ocean_blue">海洋蓝</string>
+    <string name="theme_forest_green">森林绿</string>
+    <string name="theme_sunset_orange">日落橘</string>
+    <string name="theme_plum_purple">梅子紫</string>
+    <string name="theme_midnight_mono">午夜黑</string>
+    <string name="theme_dynamic">Material You(动态取色)</string>
+    <string name="theme_dynamic_requires">需要 Android 12 及以上</string>
+
+    <string name="language_picker_title">语言</string>
+    <string name="language_picker_desc">默认跟随手机系统语言,也可以固定为某种语言。</string>
+    <string name="language_system">跟随系统（默认）</string>
+    <string name="language_en">English</string>
+    <string name="language_zh_cn">简体中文</string>
+    <string name="language_zh_tw">繁體中文</string>
+
+    <string name="tab_albums">专辑</string>
+    <string name="tab_artists">艺术家</string>
+    <string name="tab_playlists">歌单</string>
+    <string name="tab_favorites">收藏</string>
+
+    <string name="play_all">全部播放</string>
+    <string name="download_album">下载专辑</string>
+    <string name="queued">已加入队列</string>
+    <string name="loading_error">加载出错：%1$s</string>
+    <string name="song_count_and_length">%1$d 首 · %2$s</string>
+    <string name="album_count_x">%1$d 张专辑</string>
+
+    <string name="downloads_title">下载</string>
+    <string name="downloads_in_progress">进行中 (%1$d)</string>
+    <string name="downloads_completed">已完成 (%1$d)</string>
+    <string name="downloads_empty">还没有下载任何歌曲。打开专辑页,点击「下载专辑」即可开始。</string>
+    <string name="downloads_continue">继续下载</string>
+
+    <string name="search_hint">搜索歌曲 / 专辑 / 艺术家</string>
+    <string name="search_section_artists">艺术家</string>
+    <string name="search_section_albums">专辑</string>
+    <string name="search_section_songs">歌曲</string>
+
+    <string name="diagnostics_title">诊断面板</string>
+    <string name="diagnostics_extensions">OpenSubsonic 扩展</string>
+    <string name="diagnostics_events">事件日志 (%1$d)</string>
+
+    <string name="notification_channel_playback">播放控制</string>
+    <string name="notification_channel_downloads">下载</string>
+</resources>

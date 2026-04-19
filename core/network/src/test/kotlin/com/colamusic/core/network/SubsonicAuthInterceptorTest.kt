@@ -63,6 +63,30 @@ class SubsonicAuthInterceptorTest {
         throw AssertionError("expected IllegalStateException")
     }
 
+    @Test fun `passes third-party requests through untouched`() {
+        // e.g. LyricsProvider calls to lrclib.net share the OkHttpClient and
+        // must NOT be rewritten to the Subsonic host. This was the bug that
+        // silently broke English lyrics until v0.3.7.
+        val ic = SubsonicAuthInterceptor { config() }
+        val originalUrl = "https://lrclib.net/api/get?artist_name=Adele&track_name=Hello"
+        val chain = FakeChain(Request.Builder().url(originalUrl).build())
+        ic.intercept(chain)
+        val fired = chain.fired!!.url
+        assertEquals("lrclib.net", fired.host)
+        assertEquals("/api/get", fired.encodedPath)
+        assertFalse("third-party request must not carry Subsonic auth params",
+            fired.queryParameterNames.contains("t"))
+    }
+
+    @Test fun `pass-through tolerates missing session`() {
+        // Third-party providers shouldn't throw just because the user hasn't
+        // logged in yet — their call simply passes through.
+        val ic = SubsonicAuthInterceptor { null }
+        val chain = FakeChain(Request.Builder().url("https://lrclib.net/api/search").build())
+        ic.intercept(chain)
+        assertEquals("lrclib.net", chain.fired!!.url.host)
+    }
+
     @Test fun `preserves path prefix when server is reverse-proxied`() {
         val ic = SubsonicAuthInterceptor {
             SubsonicConfig("http://proxy.lan/music", "u", "p")
