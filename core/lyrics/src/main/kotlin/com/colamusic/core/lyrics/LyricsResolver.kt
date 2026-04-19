@@ -7,6 +7,8 @@ import com.colamusic.core.lyrics.normalize.TextNormalizer
 import com.colamusic.core.model.Lyrics
 import com.colamusic.core.model.LyricsSource
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -48,8 +50,20 @@ class LyricsResolver @Inject constructor(
 
         val allScored = ArrayList<Scored>(16)
         for (p in enabledProviders) {
-            val candidates = runCatching { p.lookup(request) }
-                .onFailure { Logx.w("resolver", "provider ${p.source} failed: ${it.message}") }
+            // Provider lookups hit the network via OkHttp.execute() which is
+            // synchronous. The resolver is called from the player-scope
+            // coroutine on Main.immediate, so the execute() throws
+            // NetworkOnMainThreadException (message: null, instant failure) —
+            // exactly the "0 ms miss" we saw on the Fold 7 logcat.
+            val candidates = runCatching {
+                withContext(Dispatchers.IO) { p.lookup(request) }
+            }
+                .onFailure {
+                    Logx.w(
+                        "resolver",
+                        "provider ${p.source} failed: ${it::class.java.simpleName}: ${it.message}",
+                    )
+                }
                 .getOrDefault(emptyList())
             if (candidates.isEmpty()) {
                 Logx.d("resolver", "${p.source}: no candidates")
