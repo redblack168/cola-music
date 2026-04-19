@@ -2,12 +2,15 @@ package com.colamusic.core.player
 
 import android.app.PendingIntent
 import android.content.Intent
+import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.colamusic.core.common.Logx
@@ -16,12 +19,14 @@ import okhttp3.OkHttpClient
 import javax.inject.Inject
 
 /**
- * Media3 MediaLibraryService. Hosts the ExoPlayer instance, wires it to a
+ * Media3 MediaLibraryService. Hosts the ExoPlayer instance and wires it to a
  * MediaSession so system UIs (notification, lockscreen, Bluetooth, Android
  * Auto) get first-class integration.
  *
- * Every lifecycle callback is logged + try/catch'd so a bad state here doesn't
- * translate into an opaque crash for the MediaController client.
+ * v0.3.2: wires an explicit DefaultMediaNotificationProvider bound to our own
+ * notification channel + monochrome icon, because the default Media3 provider
+ * was tripping over channel / icon resolution on some devices and taking the
+ * service down during the first startForeground call.
  */
 @AndroidEntryPoint
 class MusicService : MediaLibraryService() {
@@ -31,14 +36,15 @@ class MusicService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
     private var player: ExoPlayer? = null
 
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         runCatching {
             buildSession()
+            attachNotificationProvider()
             Logx.i("svc", "MusicService.onCreate() ok")
         }.onFailure {
             Logx.e("svc", "MusicService.onCreate() failed", it)
-            // Tearing down so onGetSession returns null and the client sees a clean failure
             runCatching { session?.release() }
             runCatching { player?.release() }
             session = null
@@ -55,7 +61,7 @@ class MusicService : MediaLibraryService() {
         val dataSourceFactory = DefaultDataSource.Factory(
             /* context = */ this,
             /* baseDataSourceFactory = */ OkHttpDataSource.Factory(okHttp)
-                .setUserAgent("cola-music/0.3.1")
+                .setUserAgent("cola-music/0.3.2")
         )
 
         val exo = ExoPlayer.Builder(this)
@@ -78,6 +84,18 @@ class MusicService : MediaLibraryService() {
             .build()
     }
 
+    @OptIn(UnstableApi::class)
+    private fun attachNotificationProvider() {
+        val provider = DefaultMediaNotificationProvider.Builder(this)
+            .setChannelId(NOTIFICATION_CHANNEL_ID)
+            .setChannelName(R.string.cola_notification_channel)
+            .setNotificationId(NOTIFICATION_ID)
+            .build()
+        // setSmallIcon lives on the instance, not the builder.
+        provider.setSmallIcon(R.drawable.ic_notification)
+        setMediaNotificationProvider(provider)
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         val s = session
         if (s == null) Logx.w("svc", "onGetSession called but session is null")
@@ -85,7 +103,6 @@ class MusicService : MediaLibraryService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // Keep playing when the task is swept away unless user pressed stop on the notification.
         val p = player
         if (p == null || !p.playWhenReady || p.mediaItemCount == 0) {
             Logx.i("svc", "onTaskRemoved → stopSelf (no active playback)")
@@ -106,4 +123,9 @@ class MusicService : MediaLibraryService() {
 
     /** Minimal callback — the app talks to the session directly via MediaController. */
     private inner class LibraryCallback : MediaLibrarySession.Callback
+
+    companion object {
+        private const val NOTIFICATION_CHANNEL_ID = "cola_playback"
+        private const val NOTIFICATION_ID = 1001
+    }
 }
