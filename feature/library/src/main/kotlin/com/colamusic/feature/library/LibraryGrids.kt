@@ -57,26 +57,28 @@ fun AlbumsTab(albums: List<Album>, onLoadMore: () -> Unit, onClick: (Album) -> U
 }
 
 @Composable
-fun ArtistsTab(artists: List<Artist>) {
+fun ArtistsTab(artists: List<Artist>, onClick: (Artist) -> Unit) {
     LazyColumn(Modifier.fillMaxSize()) {
         items(artists, key = { it.id }) { a ->
             ListItem(
                 headlineContent = { Text(a.name) },
                 supportingContent = { Text("${a.albumCount} 张专辑") },
-                leadingContent = { Icon(Icons.Default.Person, null) }
+                leadingContent = { Icon(Icons.Default.Person, null) },
+                modifier = Modifier.clickable { onClick(a) },
             )
         }
     }
 }
 
 @Composable
-fun PlaylistsTab(playlists: List<Playlist>) {
+fun PlaylistsTab(playlists: List<Playlist>, onClick: (Playlist) -> Unit) {
     LazyColumn(Modifier.fillMaxSize()) {
         items(playlists, key = { it.id }) { p ->
             ListItem(
                 headlineContent = { Text(p.name) },
                 supportingContent = { Text("${p.songCount} 首  ·  ${p.owner ?: ""}") },
-                leadingContent = { Icon(Icons.Default.PlaylistPlay, null) }
+                leadingContent = { Icon(Icons.Default.PlaylistPlay, null) },
+                modifier = Modifier.clickable { onClick(p) },
             )
         }
     }

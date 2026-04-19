@@ -23,11 +23,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.colamusic.core.model.Album
+import com.colamusic.core.model.Artist
 import com.colamusic.core.model.Song
 
 @Composable
 fun SearchScreen(
-    onResultClick: (Song) -> Unit,
+    onSongClick: (Song) -> Unit,
+    onAlbumClick: (Album) -> Unit,
+    onArtistClick: (Artist) -> Unit,
     vm: SearchViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -50,6 +54,7 @@ fun SearchScreen(
                     ListItem(
                         headlineContent = { Text(a.name) },
                         leadingContent = { Icon(Icons.Default.Person, null) },
+                        modifier = Modifier.clickable { onArtistClick(a) },
                     )
                 }
             }
@@ -63,6 +68,7 @@ fun SearchScreen(
                         headlineContent = { Text(al.name) },
                         supportingContent = { Text(al.artist) },
                         leadingContent = { Icon(Icons.Default.Album, null) },
+                        modifier = Modifier.clickable { onAlbumClick(al) },
                     )
                 }
             }
@@ -76,7 +82,7 @@ fun SearchScreen(
                         headlineContent = { Text(s.title) },
                         supportingContent = { Text("${s.artist ?: ""}  ·  ${s.album ?: ""}") },
                         leadingContent = { Icon(Icons.Default.MusicNote, null) },
-                        modifier = Modifier.clickable { onResultClick(s) },
+                        modifier = Modifier.clickable { onSongClick(s) },
                     )
                 }
             }

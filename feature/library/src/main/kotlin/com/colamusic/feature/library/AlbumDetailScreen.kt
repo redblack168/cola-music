@@ -20,6 +20,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
@@ -28,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -102,10 +105,12 @@ fun AlbumDetailScreen(
                     coverUrl = state.album?.coverArt?.let { policy.coverArtUrl(it, 640) },
                     songCount = state.songs.size,
                     totalDurationSec = state.songs.sumOf { it.duration },
+                    downloadQueued = state.downloadQueued,
                     onPlayAll = {
                         vm.playAll()
                         onOpenNowPlaying()
                     },
+                    onDownloadAll = { vm.downloadAll() },
                 )
             }
             itemsIndexed(state.songs) { index, song ->
@@ -128,7 +133,9 @@ private fun AlbumHeader(
     coverUrl: String?,
     songCount: Int,
     totalDurationSec: Int,
+    downloadQueued: Boolean,
     onPlayAll: () -> Unit,
+    onDownloadAll: () -> Unit,
 ) {
     Column(Modifier.padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -169,10 +176,28 @@ private fun AlbumHeader(
             }
         }
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onPlayAll, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.PlayArrow, null)
-            Spacer(Modifier.width(6.dp))
-            Text("全部播放")
+        Row(Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onPlayAll,
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Default.PlayArrow, null)
+                Spacer(Modifier.width(6.dp))
+                Text("全部播放")
+            }
+            Spacer(Modifier.width(8.dp))
+            OutlinedButton(
+                onClick = onDownloadAll,
+                enabled = !downloadQueued,
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(
+                    if (downloadQueued) Icons.Default.DownloadDone else Icons.Default.Download,
+                    null,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(if (downloadQueued) "已加入队列" else "下载专辑")
+            }
         }
     }
 }

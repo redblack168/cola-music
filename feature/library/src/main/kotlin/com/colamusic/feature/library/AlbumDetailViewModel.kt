@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.colamusic.core.common.Outcome
+import com.colamusic.core.download.DownloadRepository
+import com.colamusic.core.download.DownloadScheduler
 import com.colamusic.core.model.Album
 import com.colamusic.core.model.Song
 import com.colamusic.core.network.SubsonicRepository
@@ -21,6 +23,8 @@ class AlbumDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repo: SubsonicRepository,
     private val controller: PlayerController,
+    private val downloadRepo: DownloadRepository,
+    private val downloadScheduler: DownloadScheduler,
 ) : ViewModel() {
 
     private val albumId: String = checkNotNull(savedStateHandle["albumId"]) {
@@ -63,6 +67,16 @@ class AlbumDetailViewModel @Inject constructor(
         if (index in songs.indices) controller.playQueue(songs, startIndex = index)
     }
 
+    fun downloadAll() {
+        val songs = _state.value.songs
+        if (songs.isEmpty()) return
+        _state.update { it.copy(downloadQueued = true) }
+        viewModelScope.launch {
+            downloadRepo.enqueue(songs)
+            downloadScheduler.kick()
+        }
+    }
+
     fun toggleStar() {
         val a = _state.value.album ?: return
         val nowStarred = !a.starred
@@ -81,4 +95,5 @@ data class AlbumDetailState(
     val album: Album? = null,
     val songs: List<Song> = emptyList(),
     val error: String? = null,
+    val downloadQueued: Boolean = false,
 )

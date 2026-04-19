@@ -7,10 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.colamusic.core.database.dao.AlbumSearchDao
 import com.colamusic.core.database.dao.CachedAlbumDao
+import com.colamusic.core.database.dao.DownloadedSongDao
 import com.colamusic.core.database.dao.LyricCacheDao
 import com.colamusic.core.database.dao.RecentSongDao
 import com.colamusic.core.database.entity.AlbumSearchEntity
 import com.colamusic.core.database.entity.CachedAlbumEntity
+import com.colamusic.core.database.entity.DownloadedSongEntity
 import com.colamusic.core.database.entity.LyricCacheEntity
 import com.colamusic.core.database.entity.RecentSongEntity
 import dagger.Module
@@ -26,8 +28,9 @@ import javax.inject.Singleton
         RecentSongEntity::class,
         LyricCacheEntity::class,
         AlbumSearchEntity::class,
+        DownloadedSongEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(RoomConverters::class)
@@ -36,6 +39,7 @@ abstract class ColaDatabase : RoomDatabase() {
     abstract fun recentSongDao(): RecentSongDao
     abstract fun lyricCacheDao(): LyricCacheDao
     abstract fun albumSearchDao(): AlbumSearchDao
+    abstract fun downloadedSongDao(): DownloadedSongDao
 }
 
 @Module
@@ -52,4 +56,5 @@ object DatabaseModule {
     @Provides fun recentSongDao(db: ColaDatabase) = db.recentSongDao()
     @Provides fun lyricCacheDao(db: ColaDatabase) = db.lyricCacheDao()
     @Provides fun albumSearchDao(db: ColaDatabase) = db.albumSearchDao()
+    @Provides fun downloadedSongDao(db: ColaDatabase) = db.downloadedSongDao()
 }

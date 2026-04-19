@@ -27,9 +27,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.colamusic.feature.auth.LoginScreen
 import com.colamusic.feature.auth.SessionGateViewModel
+import com.colamusic.feature.downloads.DownloadsScreen
 import com.colamusic.feature.home.HomeScreen
 import com.colamusic.feature.library.AlbumDetailScreen
+import com.colamusic.feature.library.ArtistDetailScreen
 import com.colamusic.feature.library.LibraryScreen
+import com.colamusic.feature.library.PlaylistDetailScreen
 import com.colamusic.feature.player.NowPlayingScreen
 import com.colamusic.feature.search.SearchScreen
 import com.colamusic.feature.settings.DiagnosticsScreen
@@ -43,8 +46,14 @@ object Routes {
     const val Settings = "settings"
     const val NowPlaying = "now_playing"
     const val Diagnostics = "diagnostics"
+    const val Downloads = "downloads"
     const val Album = "album/{albumId}"
+    const val Artist = "artist/{artistId}?name={name}"
+    const val Playlist = "playlist/{playlistId}"
     fun album(id: String) = "album/$id"
+    fun artist(id: String, name: String? = null): String =
+        "artist/$id" + (name?.let { "?name=${java.net.URLEncoder.encode(it, Charsets.UTF_8)}" } ?: "")
+    fun playlist(id: String) = "playlist/$id"
 }
 
 @Composable
@@ -80,20 +89,34 @@ fun ColaNavGraph(nav: NavHostController) {
             composable(Routes.Library) {
                 LibraryScreen(
                     onAlbumClick = { album -> nav.navigate(Routes.album(album.id)) },
+                    onArtistClick = { artist -> nav.navigate(Routes.artist(artist.id, artist.name)) },
+                    onPlaylistClick = { pl -> nav.navigate(Routes.playlist(pl.id)) },
                     onNowPlayingClick = { nav.navigate(Routes.NowPlaying) }
                 )
             }
             composable(Routes.Search) {
-                SearchScreen(onResultClick = { nav.navigate(Routes.NowPlaying) })
+                SearchScreen(
+                    onSongClick = {
+                        val album = it.albumId
+                        if (album != null) nav.navigate(Routes.album(album))
+                        else nav.navigate(Routes.NowPlaying)
+                    },
+                    onAlbumClick = { nav.navigate(Routes.album(it.id)) },
+                    onArtistClick = { nav.navigate(Routes.artist(it.id, it.name)) },
+                )
             }
             composable(Routes.Settings) {
                 SettingsScreen(
                     onLoggedOut = { nav.navigate(Routes.Login) { popUpTo(0) } },
                     onOpenDiagnostics = { nav.navigate(Routes.Diagnostics) },
+                    onOpenDownloads = { nav.navigate(Routes.Downloads) },
                 )
             }
             composable(Routes.Diagnostics) {
                 DiagnosticsScreen(onBack = { nav.popBackStack() })
+            }
+            composable(Routes.Downloads) {
+                DownloadsScreen()
             }
             composable(Routes.NowPlaying) {
                 NowPlayingScreen(onBack = { nav.popBackStack() })
@@ -103,6 +126,28 @@ fun ColaNavGraph(nav: NavHostController) {
                 arguments = listOf(navArgument("albumId") { type = NavType.StringType }),
             ) {
                 AlbumDetailScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenNowPlaying = { nav.navigate(Routes.NowPlaying) },
+                )
+            }
+            composable(
+                route = Routes.Artist,
+                arguments = listOf(
+                    navArgument("artistId") { type = NavType.StringType },
+                    navArgument("name") { type = NavType.StringType; nullable = true; defaultValue = null },
+                ),
+            ) { entry ->
+                ArtistDetailScreen(
+                    artistName = entry.arguments?.getString("name"),
+                    onBack = { nav.popBackStack() },
+                    onAlbumClick = { nav.navigate(Routes.album(it.id)) },
+                )
+            }
+            composable(
+                route = Routes.Playlist,
+                arguments = listOf(navArgument("playlistId") { type = NavType.StringType }),
+            ) {
+                PlaylistDetailScreen(
                     onBack = { nav.popBackStack() },
                     onOpenNowPlaying = { nav.navigate(Routes.NowPlaying) },
                 )

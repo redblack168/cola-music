@@ -1,17 +1,17 @@
-# Known Issues · v0.2.0
+# Known Issues · v0.3.0
 
-## P0 (would block a wide release, but acceptable for personal-sideload v1)
+## P0 (would block a wide release, but acceptable for personal-sideload)
 
 None — the current set of features is designed to ship as-is for the
 acceptance gate.
 
-## P1 (will fix in v0.3)
+## P1 (will fix in v0.4)
 
 - **`QQMusicLyricsProvider` is still a no-op stub.** Architecture, settings toggle, and circuit breaker pattern are in place; actual API calls need to be filled in.
-- **`PinyinIndexer` seed is small (~120 chars).** Enough for major pop-title characters but long-tail titles miss pinyin initials. Full table will ship as an asset in v0.3.
-- **OpenCC phrase dict not bundled.** Character-level fold is active (seed + optional asset); phrase-level fold loader is in place but no `t2s_phrase.json` asset ships yet.
+- **OpenCC / pinyin seeds are built-in, not asset-backed.** Seeds now cover ~500 chars each; a full OpenCC JSON dict (~8k entries) would ship as an asset loaded at runtime — `OpenCCConverter.ensureLoaded` already handles that path.
 - **AlbumSyncWorker does full re-paging on every run.** Not incremental yet — a future enhancement will use `ifModifiedSince` on OpenSubsonic servers that support it.
-- **Downloads subsystem is a stub.** M5 scope.
+- **Downloads don't resume mid-transfer** on process restart. If the worker is killed partway through, the `.part` temp file is discarded and the song re-queues from zero next run.
+- **No Android Auto polish yet** (service is wired, UX is stock).
 
 ## P2 (planned for v0.3+)
 

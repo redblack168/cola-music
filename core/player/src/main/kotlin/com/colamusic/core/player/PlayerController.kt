@@ -8,6 +8,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.colamusic.core.common.Logx
+import com.colamusic.core.download.DownloadRepository
 import com.colamusic.core.model.QualityPolicy
 import com.colamusic.core.model.Song
 import com.colamusic.core.model.StreamInfo
@@ -36,6 +37,7 @@ class PlayerController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val streamPolicy: StreamPolicy,
     private val preferences: PlayerPreferences,
+    private val downloads: DownloadRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var controller: MediaController? = null
@@ -78,7 +80,7 @@ class PlayerController @Inject constructor(
     fun play(song: Song) = scope.launch {
         val policy = preferences.policy.first()
         val allow = preferences.allowMobileOriginal.first()
-        val info = streamPolicy.resolve(song, policy, allow)
+        val info = resolveStream(song, policy, allow)
         if (info.url.isBlank()) return@launch
         val c = controller ?: run { connect(); controller } ?: return@launch
         c.setMediaItem(song.toMediaItem(info))
@@ -93,8 +95,7 @@ class PlayerController @Inject constructor(
         val policy = preferences.policy.first()
         val allow = preferences.allowMobileOriginal.first()
         val items = songs.map { song ->
-            val info = streamPolicy.resolve(song, policy, allow)
-            song.toMediaItem(info)
+            song.toMediaItem(resolveStream(song, policy, allow))
         }
         val c = controller ?: run { connect(); controller } ?: return@launch
         c.setMediaItems(items, startIndex, 0L)
@@ -102,7 +103,23 @@ class PlayerController @Inject constructor(
         c.playWhenReady = true
         val startSong = songs.getOrNull(startIndex) ?: songs.first()
         _currentSong.value = startSong
-        _streamKind.value = streamPolicy.resolve(startSong, policy, allow).kind
+        _streamKind.value = resolveStream(startSong, policy, allow).kind
+    }
+
+    /** Offline-first resolution — returns a file-URI StreamInfo if a downloaded
+     *  copy exists, otherwise delegates to [StreamPolicy]. */
+    private fun resolveStream(song: Song, policy: QualityPolicy, allow: Boolean): StreamInfo {
+        val local = downloads.offlineFileFor(song.id)
+        if (local != null) {
+            return StreamInfo(
+                url = local.toURI().toString(),
+                kind = StreamKind.Downloaded,
+                requestedFormat = song.suffix,
+                maxBitRate = null,
+                contentType = song.contentType,
+            )
+        }
+        return streamPolicy.resolve(song, policy, allow)
     }
 
     fun toggle() {

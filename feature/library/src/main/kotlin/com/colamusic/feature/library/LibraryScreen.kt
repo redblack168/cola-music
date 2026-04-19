@@ -2,8 +2,6 @@ package com.colamusic.feature.library
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -13,14 +11,17 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.colamusic.core.model.Album
+import com.colamusic.core.model.Artist
+import com.colamusic.core.model.Playlist
 
 @Composable
 fun LibraryScreen(
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (Artist) -> Unit,
+    onPlaylistClick: (Playlist) -> Unit,
     onNowPlayingClick: () -> Unit,
     vm: LibraryViewModel = hiltViewModel(),
 ) {
@@ -35,12 +36,9 @@ fun LibraryScreen(
         }
         when (tab) {
             0 -> AlbumsTab(state.albums, vm::loadMoreAlbums, onAlbumClick)
-            1 -> ArtistsTab(state.artists)
-            2 -> PlaylistsTab(state.playlists)
+            1 -> ArtistsTab(state.artists, onArtistClick)
+            2 -> PlaylistsTab(state.playlists, onPlaylistClick)
             3 -> AlbumsTab(state.starredAlbums, {}, onAlbumClick)
         }
     }
 }
-
-@Composable private fun Placeholder(label: String) =
-    Text(label, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)

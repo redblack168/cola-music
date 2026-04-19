@@ -2,6 +2,48 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.0] — 2026-04-19
+
+### Added
+- **Downloads subsystem (M5).** New `core:download` module with `DownloadRepository`
+  (queue / progress / completed observer / LRU eviction), `DownloadStorage`
+  (filesDir/music/ layout), and `DownloadPreferences` (Wi-Fi-only + storage cap
+  backed by DataStore). `DownloadSongWorker` (WorkManager) drains the queue via
+  Navidrome's `/rest/download.view`, writes atomically via okio, and mirrors
+  progress into the DB. `DownloadScheduler` enqueues with `APPEND_OR_REPLACE`.
+- **Offline-first playback.** `PlayerController` checks `DownloadRepository`
+  before resolving a stream URL. Downloaded tracks play from `file://` with the
+  "离线" quality chip — no code-path fork between online and offline.
+- **Functional DownloadsScreen.** Active queue with progress bars, completed
+  list with storage usage footer, Wi-Fi-only toggle, per-row delete.
+- **"下载专辑" button** on Album Detail — enqueues every track on the album.
+- **Artist detail screen.** Albums grid, back navigation, click-to-album.
+- **Playlist detail screen.** Play-all + per-song play.
+- **Search click-through.** Artist / album / song rows each navigate to the
+  right destination (album detail for songs so the queue context is preserved).
+- **Signed release APK.** R8-shrunk (~3 MB down from ~23 MB debug), signed with
+  a project-specific RSA-2048 keystore. Signing properties live at
+  `release-signing.properties` (gitignored); `assembleRelease` picks them up
+  automatically when present and falls back to debug signing otherwise.
+- **OpenCC seed expanded.** `OpenCCSeed.EXTRA` adds ~400 common trad→simp pairs;
+  the asset loader in `OpenCCConverter.ensureLoaded` still takes precedence for
+  anyone who drops in a full OpenCC JSON dict.
+- **Pinyin seed expanded.** `PinyinSeed.EXTRA` adds ~400 common CJK → first-
+  letter pairs for pop-music coverage (artists, moods, titles).
+
+### Changed
+- `core:network` now exposes `okhttp` via `api(libs.okhttp)` so downstream
+  modules (core:player, core:download, app) can inject `OkHttpClient` without
+  redeclaring the dependency.
+- Schema version bumped to 3 (adds `downloaded_songs` table).
+- versionCode 3, versionName 0.3.0.
+
+### Routes
+`app/src/main/kotlin/com/colamusic/ColaNavGraph.kt` now includes:
+`album/{albumId}`, `artist/{artistId}?name=...`, `playlist/{playlistId}`,
+`downloads`, `diagnostics` — in addition to the tabbed home / library /
+search / settings.
+
 ## [0.2.0] — 2026-04-19
 
 ### Added

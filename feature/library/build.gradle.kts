@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:database"))
     implementation(project(":core:player"))
+    implementation(project(":core:download"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.bundles.lifecycle)

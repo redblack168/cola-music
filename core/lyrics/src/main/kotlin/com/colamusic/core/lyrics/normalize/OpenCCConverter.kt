@@ -57,6 +57,8 @@ object OpenCCConverter {
             '級' to '级', '歷' to '历', '錄' to '录', '華' to '华', '輯' to '辑',
             '專' to '专', '歡' to '欢', '聲' to '声', '團' to '团', '歷' to '历',
         ).forEach { (k, v) -> put(k, v) }
+        // Large secondary table covering ~400 more pop-music-common chars.
+        putAll(OpenCCSeed.EXTRA)
     }
 
     private val table = AtomicReference<Map<Char, Char>>(SEED_CHARS)

@@ -65,5 +65,7 @@ object PinyinIndexer {
             '飘' to 'p', '远' to 'y', '童' to 't', '话' to 'h', '兰' to 'l', '亭' to 't',
             '序' to 'x', '演' to 'y', '员' to 'y', '盛' to 's', '夏' to 'x', '光' to 'g',
         ).forEach { (k, v) -> put(k, v) }
+        // Secondary seed (~400 more chars)
+        putAll(PinyinSeed.EXTRA)
     }
 }

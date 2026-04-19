@@ -23,9 +23,11 @@ dependencies {
     implementation(project(":core:database"))
 
     implementation(libs.bundles.media3)
+    implementation(libs.okhttp)
     implementation(libs.workmanager.runtime)
     implementation(libs.workmanager.hilt)
     ksp(libs.workmanager.hilt.compiler)
+    implementation(libs.datastore.preferences)
     implementation(libs.coroutines.android)
 
     implementation(libs.hilt.android)

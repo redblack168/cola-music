@@ -21,7 +21,13 @@ dependencies {
     api(project(":core:model"))
     implementation(project(":core:common"))
 
-    implementation(libs.bundles.retrofit)
+    // OkHttp is exposed via api so downstream modules (core:player, app) can
+    // inject OkHttpClient from NetworkModule without redeclaring the dep.
+    api(libs.okhttp)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp.logging)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.coroutines.android)
     implementation(libs.security.crypto)
     implementation(libs.datastore.preferences)

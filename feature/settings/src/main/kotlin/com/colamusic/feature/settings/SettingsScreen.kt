@@ -33,6 +33,7 @@ private const val DIAGNOSTICS_TAP_COUNT = 7
 fun SettingsScreen(
     onLoggedOut: () -> Unit,
     onOpenDiagnostics: () -> Unit,
+    onOpenDownloads: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -96,7 +97,15 @@ fun SettingsScreen(
             },
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
+        HorizontalDivider()
+        ListItem(
+            headlineContent = { Text("下载管理") },
+            supportingContent = { Text("查看和管理已下载的歌曲") },
+            modifier = Modifier.clickable { onOpenDownloads() },
+        )
+
+        Spacer(Modifier.height(16.dp))
         HorizontalDivider()
         Spacer(Modifier.height(12.dp))
         Button(onClick = { vm.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
@@ -105,7 +114,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "可乐音乐 v0.2.0  ·  MIT License",
+            "可乐音乐 v0.3.0  ·  MIT License",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.clickable {

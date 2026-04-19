@@ -20,6 +20,7 @@ dependencies {
     api(project(":core:model"))
     implementation(project(":core:common"))
     implementation(project(":core:network"))
+    implementation(project(":core:download"))
 
     implementation(libs.bundles.media3)
     implementation(libs.okhttp)
