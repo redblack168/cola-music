@@ -198,21 +198,33 @@ fun NowPlayingScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        Text(
-            song?.title ?: "未播放",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            listOfNotNull(song?.artist, song?.album).joinToString(" · "),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
+        // Layout density adapts to the active page.
+        //   - Cover page: full song-info block (big title, artist · album)
+        //                 + spacious seekbar + 76 dp primary play button.
+        //   - Lyrics page: title/artist collapsed (the lyric IS the song),
+        //                 thinner seekbar, 56 dp play button. The lyrics
+        //                 panel reclaims roughly 110 dp of vertical space.
+        val onLyrics = pagerState.currentPage == 1
 
-        Spacer(Modifier.height(16.dp))
+        androidx.compose.animation.AnimatedVisibility(visible = !onLyrics) {
+            Column {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    song?.title ?: "未播放",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    listOfNotNull(song?.artist, song?.album).joinToString(" · "),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(if (onLyrics) 8.dp else 16.dp))
         var seekPos by remember(pos, dur) { mutableFloatStateOf(pos.toFloat()) }
         val safeDur = (dur.coerceAtLeast(1L)).toFloat()
         Slider(
@@ -226,29 +238,31 @@ fun NowPlayingScreen(
             Text(formatMs(dur), style = MaterialTheme.typography.bodySmall)
         }
 
-        Spacer(Modifier.height(16.dp))
-        // Transport controls. The central play/pause button is an elevated
-        // circular filled surface — reads as the primary action on the
-        // screen and matches the patterns used by the premium music apps
-        // (Spotify, Apple Music, Tidal).
+        Spacer(Modifier.height(if (onLyrics) 4.dp else 16.dp))
+        // Transport controls — sized for context. Lyrics page gets a
+        // compact 56 dp button; cover page keeps the bigger 76 dp anchor.
+        val playSize = if (onLyrics) 56.dp else 76.dp
+        val playIconSize = if (onLyrics) 32.dp else 44.dp
+        val sideBtnSize = if (onLyrics) 44.dp else 52.dp
+        val sideIconSize = if (onLyrics) 28.dp else 36.dp
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 20.dp),
+            Modifier.fillMaxWidth().padding(bottom = if (onLyrics) 10.dp else 20.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = { vm.previous() }, modifier = Modifier.size(52.dp)) {
+            IconButton(onClick = { vm.previous() }, modifier = Modifier.size(sideBtnSize)) {
                 Icon(
                     Icons.Default.SkipPrevious,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(sideIconSize),
                 )
             }
             Box(
                 Modifier
-                    .size(76.dp)
+                    .size(playSize)
                     .graphicsLayer {
-                        shadowElevation = 12f
+                        shadowElevation = if (onLyrics) 8f else 12f
                         shape = androidx.compose.foundation.shape.CircleShape
                         clip = false
                     }
@@ -261,15 +275,15 @@ fun NowPlayingScreen(
                     if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(playIconSize),
                 )
             }
-            IconButton(onClick = { vm.next() }, modifier = Modifier.size(52.dp)) {
+            IconButton(onClick = { vm.next() }, modifier = Modifier.size(sideBtnSize)) {
                 Icon(
                     Icons.Default.SkipNext,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(sideIconSize),
                 )
             }
         }
