@@ -1,0 +1,5 @@
+title: Cola Music
+description: A Chinese-first, lossless-first native Android client for your self-hosted music server.
+theme: jekyll-theme-minimal
+markdown: kramdown
+permalink: /:basename
