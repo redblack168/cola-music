@@ -1,6 +1,9 @@
 package com.colamusic.feature.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,9 +53,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -80,9 +86,13 @@ fun NowPlayingScreen(
 
     var mode by rememberSaveable { mutableStateOf(NowPlayingMode.Cover) }
 
+    // Derive the gradient top from the palette's primaryContainer so the
+    // "music-app backdrop" follows whichever color theme the user picked in
+    // Settings without pulling an app-module CompositionLocal into this module.
     val bgBrush = Brush.verticalGradient(
         colors = listOf(
-            Color(0xFF1A0D12),
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.30f)
+                .compositeOver(MaterialTheme.colorScheme.background),
             MaterialTheme.colorScheme.background,
         ),
     )
@@ -135,6 +145,7 @@ fun NowPlayingScreen(
                 NowPlayingMode.Lyrics -> LyricsPanel(
                     lyrics = lyrics,
                     positionMs = pos,
+                    coverUrl = remember(song?.coverArt) { vm.coverUrl() },
                     onSeek = { vm.seekTo(it) },
                     onTap = { mode = NowPlayingMode.Cover },
                 )
@@ -247,6 +258,7 @@ private fun CoverPanel(
 private fun LyricsPanel(
     lyrics: Lyrics?,
     positionMs: Long,
+    coverUrl: String?,
     onSeek: (Long) -> Unit,
     onTap: () -> Unit,
 ) {
@@ -254,6 +266,33 @@ private fun LyricsPanel(
         Modifier.fillMaxSize().clickable(onClick = onTap),
         contentAlignment = Alignment.Center,
     ) {
+        // Soft, blurred cover art as backdrop — gives the lyrics view the
+        // "floating over the album" feel that premium music apps use.
+        if (coverUrl != null) {
+            AsyncImage(
+                model = coverUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = 0.22f }
+                    .blur(radius = 32.dp),
+            )
+        }
+        // Subtle vertical dim so lyrics stay legible even on bright covers.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.35f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.45f),
+                        ),
+                    ),
+                ),
+        )
         if (lyrics == null || lyrics.isEmpty) {
             Text(
                 "暂无歌词,正在搜索…",
@@ -292,32 +331,64 @@ private fun SyncedLyricsView(
         state = listState,
         modifier = Modifier.fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        contentPadding = PaddingValues(vertical = 120.dp),
+        contentPadding = PaddingValues(vertical = 140.dp),
     ) {
         itemsIndexed(
             items = lyrics.lines,
             key = { index, item -> "${item.timeMs ?: -1}:$index" },
         ) { i, line ->
-            val isActive = i == active
-            Text(
+            LyricLineRow(
                 text = line.text,
-                style = if (isActive) MaterialTheme.typography.headlineSmall
-                    else MaterialTheme.typography.bodyLarge,
-                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                color = when {
-                    isActive -> MaterialTheme.colorScheme.primary
-                    active >= 0 && kotlin.math.abs(i - active) <= 2 ->
-                        MaterialTheme.colorScheme.onSurface
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                },
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .clickable { line.timeMs?.let(onSeek) },
+                isActive = i == active,
+                distance = if (active < 0) 99 else kotlin.math.abs(i - active),
+                onClick = { line.timeMs?.let(onSeek) },
             )
         }
     }
+}
+
+@Composable
+private fun LyricLineRow(
+    text: String,
+    isActive: Boolean,
+    distance: Int,
+    onClick: () -> Unit,
+) {
+    // Smooth scale + color transition for the active line — the "live" cue the
+    // user was asking about. Non-active neighbors taper in alpha.
+    val scale by animateFloatAsState(
+        targetValue = if (isActive) 1.08f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        label = "lyric-scale",
+    )
+    val targetAlpha = when {
+        isActive -> 1f
+        distance == 1 -> 0.78f
+        distance == 2 -> 0.55f
+        distance <= 5 -> 0.38f
+        else -> 0.22f
+    }
+    val alpha by animateFloatAsState(targetAlpha, tween(300), label = "lyric-alpha")
+    val baseColor = if (isActive) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurface
+    val color by animateColorAsState(baseColor, tween(300), label = "lyric-color")
+
+    Text(
+        text = text,
+        style = if (isActive) MaterialTheme.typography.headlineSmall
+            else MaterialTheme.typography.titleMedium,
+        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+        color = color.copy(alpha = alpha),
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(onClick = onClick),
+    )
 }
 
 @Composable

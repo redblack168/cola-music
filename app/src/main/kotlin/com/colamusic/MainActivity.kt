@@ -8,22 +8,28 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.MaterialTheme
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
+import com.colamusic.ui.ColaPalette
+import com.colamusic.ui.ColaTheme
 import com.colamusic.ui.ProvideAdaptiveLayout
+import com.colamusic.ui.ThemePreferences
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var themePrefs: ThemePreferences
 
     private val requestNotificationPerm = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -37,44 +43,25 @@ class MainActivity : ComponentActivity() {
         maybeRequestNotificationPermission()
         setContent {
             val sizeClass = calculateWindowSizeClass(this)
-            ColaTheme {
+            val palette by themePrefs.palette.collectAsState(initial = ColaPalette.ColaRed)
+            ColaTheme(palette = palette) {
                 ProvideAdaptiveLayout(widthSizeClass = sizeClass.widthSizeClass) {
-                    ColaAppContent()
+                    Surface(
+                        modifier = Modifier,
+                        color = MaterialTheme.colorScheme.background,
+                        content = { ColaAppContent() },
+                    )
                 }
             }
         }
     }
 
-    /**
-     * Android 13+ requires POST_NOTIFICATIONS to be granted before the
-     * MediaLibraryService can show its foreground notification. Missing that
-     * permission is a common reason the OS kills a media foreground service
-     * with ForegroundServiceDidNotStartInTimeException.
-     */
     private fun maybeRequestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val granted = ContextCompat.checkSelfPermission(
             this, Manifest.permission.POST_NOTIFICATIONS
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted) requestNotificationPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-}
-
-@Composable
-private fun ColaTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Color(0xFFE23744),
-            secondary = Color(0xFFFFB86C),
-            background = Color(0xFF0B0B0F),
-            surface = Color(0xFF14141A)
-        )
-    ) {
-        Surface(
-            modifier = Modifier,
-            color = MaterialTheme.colorScheme.background,
-            content = content
-        )
     }
 }
 

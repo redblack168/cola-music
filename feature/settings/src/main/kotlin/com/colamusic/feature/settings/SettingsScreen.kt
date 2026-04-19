@@ -34,6 +34,7 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit,
     onOpenDiagnostics: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenTheme: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -100,6 +101,11 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
         HorizontalDivider()
         ListItem(
+            headlineContent = { Text("颜色主题") },
+            supportingContent = { Text("可乐红 / 海洋蓝 / 森林绿 / 日落橘 / 梅子紫 / 午夜黑 / Material You") },
+            modifier = Modifier.clickable { onOpenTheme() },
+        )
+        ListItem(
             headlineContent = { Text("下载管理") },
             supportingContent = { Text("查看和管理已下载的歌曲") },
             modifier = Modifier.clickable { onOpenDownloads() },
@@ -114,7 +120,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "可乐音乐 v0.3.5  ·  MIT License",
+            "可乐音乐 v0.3.6  ·  MIT License",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.clickable {

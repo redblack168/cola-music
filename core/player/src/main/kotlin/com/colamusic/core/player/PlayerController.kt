@@ -19,12 +19,15 @@ import com.google.common.util.concurrent.MoreExecutors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
@@ -47,6 +50,7 @@ class PlayerController @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val controllerFlow = MutableStateFlow<MediaController?>(null)
+    private var positionTicker: Job? = null
 
     private val _currentSong = MutableStateFlow<Song?>(null)
     val currentSong: StateFlow<Song?> = _currentSong.asStateFlow()
@@ -77,6 +81,7 @@ class PlayerController @Inject constructor(
                     c.addListener(playerListener)
                     controllerFlow.value = c
                     pushState(c)
+                    startPositionTicker(c)
                     Logx.i("player", "MediaController connected")
                 }.onFailure {
                     Logx.e("player", "Failed to connect to MusicService", it)
@@ -90,9 +95,32 @@ class PlayerController @Inject constructor(
     }
 
     fun release() {
+        positionTicker?.cancel()
+        positionTicker = null
         controllerFlow.value?.removeListener(playerListener)
         controllerFlow.value?.release()
         controllerFlow.value = null
+    }
+
+    /**
+     * Media3 does not emit position updates on its own — it only fires player
+     * listener callbacks on state changes (play / pause / seek). Synced lyrics
+     * need sub-second position ticks, so poll [MediaController.currentPosition]
+     * at ~4 Hz while playing. When paused we drop to a 1 Hz idle tick so the
+     * seek bar still reflects fresh values after seekTo.
+     */
+    private fun startPositionTicker(c: MediaController) {
+        positionTicker?.cancel()
+        positionTicker = scope.launch {
+            while (isActive) {
+                val playing = runCatching { c.isPlaying }.getOrDefault(false)
+                val pos = runCatching { c.currentPosition }.getOrDefault(_positionMs.value)
+                val dur = runCatching { c.duration }.getOrDefault(_durationMs.value)
+                if (pos >= 0 && pos != _positionMs.value) _positionMs.value = pos
+                if (dur > 0 && dur != _durationMs.value) _durationMs.value = dur
+                delay(if (playing) 250L else 1000L)
+            }
+        }
     }
 
     /** Suspends until the controller is ready or 5 s elapse. */
