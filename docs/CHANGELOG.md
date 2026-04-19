@@ -2,6 +2,37 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.1] — 2026-04-19
+
+### Fixed
+- **Playback crash / silent first-tap.** `PlayerController.play()` / `playQueue()`
+  now `awaitController()` via a `MutableStateFlow<MediaController?>` so the first
+  tap after cold start actually starts playback instead of dropping. Wrapped in
+  try/catch with explicit `Logx.e` so any future failure is loggable rather
+  than opaque; exposes `error: StateFlow<String?>` for UI surfacing.
+- **Main-thread Room access.** `DownloadRepository.offlineFileFor` is now a
+  `suspend fun` — the old `runBlocking { dao.find(...) }` was exactly the
+  pattern that produced the crash you saw, because `PlayerController.scope`
+  runs on `Dispatchers.Main.immediate`.
+- **Android 13+ POST_NOTIFICATIONS.** `MainActivity` now requests the permission
+  on launch. Without it, `MediaLibraryService` was hitting
+  `ForegroundServiceDidNotStartInTimeException` when trying to show its
+  foreground media notification — that failure kills the service, which then
+  kills the `MediaController` bind and crashes the playback path.
+- **MusicService lifecycle hardened.** `onCreate` is wrapped in runCatching and
+  logs on failure; a failed session build releases the ExoPlayer cleanly so
+  `onGetSession` returns null rather than a half-alive session. Added
+  `Player.Listener.onPlayerError` to surface ExoPlayer errors up to the UI.
+
+### Added
+- **Cute kitty launcher icon.** New adaptive icon: cream kitty face with pink
+  ears / cheeks / nose, sparkle eye highlights, W-smile, and whiskers, over a
+  cola-red → orange diagonal gradient background. Replaces the v0.3 camera
+  placeholder.
+
+### Changed
+- versionCode 4, versionName 0.3.1.
+
 ## [0.3.0] — 2026-04-19
 
 ### Added

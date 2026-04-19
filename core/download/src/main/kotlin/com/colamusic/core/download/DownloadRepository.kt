@@ -32,11 +32,14 @@ class DownloadRepository @Inject constructor(
         return storage.resolveOrNull(row.relativePath) != null
     }
 
-    fun offlineFileFor(songId: String): java.io.File? = runCatching {
-        kotlinx.coroutines.runBlocking { dao.find(songId) }
-            ?.takeIf { it.status == DownloadStatus.Completed.name }
-            ?.let { storage.resolveOrNull(it.relativePath) }
-    }.getOrNull()
+    /** Suspend lookup — callers are expected to already be in a coroutine
+     *  (e.g. [PlayerController]'s main-immediate scope). Room will dispatch
+     *  the DAO call to its own query executor. */
+    suspend fun offlineFileFor(songId: String): java.io.File? {
+        val row = dao.find(songId) ?: return null
+        if (row.status != DownloadStatus.Completed.name) return null
+        return storage.resolveOrNull(row.relativePath)
+    }
 
     /** Inserts queued rows for any songs not already downloaded. */
     suspend fun enqueue(songs: List<Song>) {

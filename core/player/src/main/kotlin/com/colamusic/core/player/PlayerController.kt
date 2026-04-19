@@ -21,16 +21,19 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Single entry point the UI uses to talk to the MediaSession.
  *
- * Obtains a [MediaController] tied to our [MusicService], and exposes reactive
- * state (current song, position, isPlaying, stream kind) via StateFlows.
+ * Obtains a [MediaController] tied to our [MusicService] asynchronously.
+ * play() and playQueue() await the controller via a StateFlow so the
+ * first tap after cold start doesn't silently drop.
  */
 @Singleton
 class PlayerController @Inject constructor(
@@ -40,7 +43,7 @@ class PlayerController @Inject constructor(
     private val downloads: DownloadRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var controller: MediaController? = null
+    private val controllerFlow = MutableStateFlow<MediaController?>(null)
 
     private val _currentSong = MutableStateFlow<Song?>(null)
     val currentSong: StateFlow<Song?> = _currentSong.asStateFlow()
@@ -57,59 +60,114 @@ class PlayerController @Inject constructor(
     private val _durationMs = MutableStateFlow(0L)
     val durationMs: StateFlow<Long> = _durationMs.asStateFlow()
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     fun connect() {
-        if (controller != null) return
-        val token = SessionToken(context, ComponentName(context, MusicService::class.java))
-        val future = MediaController.Builder(context, token).buildAsync()
-        future.addListener({
-            runCatching {
-                val c = future.get()
-                controller = c
-                c.addListener(playerListener)
-                pushState(c)
-            }.onFailure { Logx.e("player", "Failed to connect to MusicService", it) }
-        }, MoreExecutors.directExecutor())
+        if (controllerFlow.value != null) return
+        try {
+            val token = SessionToken(context, ComponentName(context, MusicService::class.java))
+            val future = MediaController.Builder(context, token).buildAsync()
+            future.addListener({
+                runCatching {
+                    val c = future.get()
+                    c.addListener(playerListener)
+                    controllerFlow.value = c
+                    pushState(c)
+                    Logx.i("player", "MediaController connected")
+                }.onFailure {
+                    Logx.e("player", "Failed to connect to MusicService", it)
+                    _error.value = it.message
+                }
+            }, MoreExecutors.directExecutor())
+        } catch (t: Throwable) {
+            Logx.e("player", "connect() threw", t)
+            _error.value = t.message
+        }
     }
 
     fun release() {
-        controller?.removeListener(playerListener)
-        controller?.release()
-        controller = null
+        controllerFlow.value?.removeListener(playerListener)
+        controllerFlow.value?.release()
+        controllerFlow.value = null
+    }
+
+    /** Suspends until the controller is ready or 5 s elapse. */
+    private suspend fun awaitController(): MediaController? {
+        controllerFlow.value?.let { return it }
+        connect()
+        return withTimeoutOrNull(5_000) { controllerFlow.filterNotNull().first() }
     }
 
     fun play(song: Song) = scope.launch {
-        val policy = preferences.policy.first()
-        val allow = preferences.allowMobileOriginal.first()
-        val info = resolveStream(song, policy, allow)
-        if (info.url.isBlank()) return@launch
-        val c = controller ?: run { connect(); controller } ?: return@launch
-        c.setMediaItem(song.toMediaItem(info))
-        c.prepare()
-        c.playWhenReady = true
-        _currentSong.value = song
-        _streamKind.value = info.kind
+        try {
+            val policy = preferences.policy.first()
+            val allow = preferences.allowMobileOriginal.first()
+            val info = resolveStream(song, policy, allow)
+            if (info.url.isBlank()) {
+                Logx.w("player", "play() skipped: empty stream url for ${song.id}")
+                _error.value = "未登录或流地址为空"
+                return@launch
+            }
+            val c = awaitController() ?: run {
+                Logx.e("player", "play() timed out waiting for MediaController")
+                _error.value = "播放服务未就绪"
+                return@launch
+            }
+            c.setMediaItem(song.toMediaItem(info))
+            c.prepare()
+            c.playWhenReady = true
+            _currentSong.value = song
+            _streamKind.value = info.kind
+            _error.value = null
+            Logx.i("player", "play(${song.id}) kind=${info.kind} url=${info.url.take(80)}")
+        } catch (t: Throwable) {
+            Logx.e("player", "play(${song.id}) failed", t)
+            _error.value = t.message
+        }
     }
 
     fun playQueue(songs: List<Song>, startIndex: Int = 0) = scope.launch {
         if (songs.isEmpty()) return@launch
-        val policy = preferences.policy.first()
-        val allow = preferences.allowMobileOriginal.first()
-        val items = songs.map { song ->
-            song.toMediaItem(resolveStream(song, policy, allow))
+        try {
+            val policy = preferences.policy.first()
+            val allow = preferences.allowMobileOriginal.first()
+            val items = songs.map { song ->
+                song.toMediaItem(resolveStream(song, policy, allow))
+            }
+            val c = awaitController() ?: run {
+                Logx.e("player", "playQueue() timed out waiting for MediaController")
+                _error.value = "播放服务未就绪"
+                return@launch
+            }
+            c.setMediaItems(items, startIndex, 0L)
+            c.prepare()
+            c.playWhenReady = true
+            val startSong = songs.getOrNull(startIndex) ?: songs.first()
+            _currentSong.value = startSong
+            _streamKind.value = resolveStream(startSong, policy, allow).kind
+            _error.value = null
+            Logx.i("player", "playQueue() size=${items.size} start=$startIndex")
+        } catch (t: Throwable) {
+            Logx.e("player", "playQueue() failed", t)
+            _error.value = t.message
         }
-        val c = controller ?: run { connect(); controller } ?: return@launch
-        c.setMediaItems(items, startIndex, 0L)
-        c.prepare()
-        c.playWhenReady = true
-        val startSong = songs.getOrNull(startIndex) ?: songs.first()
-        _currentSong.value = startSong
-        _streamKind.value = resolveStream(startSong, policy, allow).kind
     }
 
-    /** Offline-first resolution — returns a file-URI StreamInfo if a downloaded
-     *  copy exists, otherwise delegates to [StreamPolicy]. */
-    private fun resolveStream(song: Song, policy: QualityPolicy, allow: Boolean): StreamInfo {
-        val local = downloads.offlineFileFor(song.id)
+    fun toggle() {
+        val c = controllerFlow.value ?: return
+        if (c.isPlaying) c.pause() else c.play()
+    }
+
+    fun seekTo(ms: Long) { controllerFlow.value?.seekTo(ms) }
+    fun next() { controllerFlow.value?.seekToNextMediaItem() }
+    fun previous() { controllerFlow.value?.seekToPreviousMediaItem() }
+
+    /** Offline-first — file URI if downloaded, else delegate to [StreamPolicy]. */
+    private suspend fun resolveStream(song: Song, policy: QualityPolicy, allow: Boolean): StreamInfo {
+        val local = runCatching { downloads.offlineFileFor(song.id) }
+            .onFailure { Logx.w("player", "offlineFileFor(${song.id}) failed: ${it.message}") }
+            .getOrNull()
         if (local != null) {
             return StreamInfo(
                 url = local.toURI().toString(),
@@ -122,22 +180,10 @@ class PlayerController @Inject constructor(
         return streamPolicy.resolve(song, policy, allow)
     }
 
-    fun toggle() {
-        val c = controller ?: return
-        if (c.isPlaying) c.pause() else c.play()
-    }
-
-    fun seekTo(ms: Long) {
-        controller?.seekTo(ms)
-    }
-
-    fun next() { controller?.seekToNextMediaItem() }
-    fun previous() { controller?.seekToPreviousMediaItem() }
-
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlayingNow: Boolean) {
             _isPlaying.value = isPlayingNow
-            controller?.let { pushState(it) }
+            controllerFlow.value?.let { pushState(it) }
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val song = mediaItem?.toSongOrNull()
@@ -146,12 +192,16 @@ class PlayerController @Inject constructor(
                 scope.launch {
                     val policy = preferences.policy.first()
                     val allow = preferences.allowMobileOriginal.first()
-                    _streamKind.value = streamPolicy.resolve(song, policy, allow).kind
+                    _streamKind.value = resolveStream(song, policy, allow).kind
                 }
             }
         }
         override fun onPlaybackStateChanged(playbackState: Int) {
-            controller?.let { pushState(it) }
+            controllerFlow.value?.let { pushState(it) }
+        }
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Logx.e("player", "Playback error: ${error.errorCodeName} ${error.message}", error)
+            _error.value = "${error.errorCodeName}: ${error.message}"
         }
     }
 

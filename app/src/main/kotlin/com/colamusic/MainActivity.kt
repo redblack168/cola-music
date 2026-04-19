@@ -1,15 +1,20 @@
 package com.colamusic
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
@@ -17,11 +22,30 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private val requestNotificationPerm = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or not — foreground playback still works, just no visible notification */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        maybeRequestNotificationPermission()
         setContent { ColaTheme { ColaAppContent() } }
+    }
+
+    /**
+     * Android 13+ requires POST_NOTIFICATIONS to be granted before the
+     * MediaLibraryService can show its foreground notification. Missing that
+     * permission is the single most common reason the OS kills a media
+     * foreground service with ForegroundServiceDidNotStartInTimeException.
+     */
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) requestNotificationPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
@@ -48,4 +72,3 @@ private fun ColaAppContent() {
     val nav = rememberNavController()
     ColaNavGraph(nav)
 }
-
