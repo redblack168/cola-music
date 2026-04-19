@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Premium diagonal gradient. Uses the vendor-neutral aapt shortcut so the
-     background swaps cleanly when the user picks a different color theme. -->
+<!--
+  Three-stop diagonal gradient. Goes deep burgundy in the top-left corner to
+  a warm peach in the bottom-right, through a rich cola red in the middle.
+  Much more premium than a flat red or a flat two-stop gradient; reads as an
+  intentional brand mark rather than a default Material accent.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -9,11 +13,11 @@
     <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
             <gradient
-                android:startColor="#E23744"
-                android:centerColor="#D1304A"
-                android:endColor="#FF9554"
-                android:startX="14" android:startY="14"
-                android:endX="94" android:endY="94"
+                android:startColor="#6B1420"
+                android:centerColor="#E23744"
+                android:endColor="#FFA76B"
+                android:startX="10" android:startY="10"
+                android:endX="98" android:endY="98"
                 android:type="linear" />
         </aapt:attr>
     </path>

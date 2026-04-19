@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cola Music launcher foreground — abstract kitty silhouette.
-  Single continuous rounded face + two sharp ears, two thin closed eye slits,
-  nothing else. No cheeks, no whiskers, no nose. Premium / Spotify-clean feel.
-  108×108 viewport; content sits inside the 72 dp adaptive safe zone.
+  Cola Music launcher foreground — refined abstract kitty.
+
+  One continuous white silhouette: two sharp ears flow straight into a
+  softly rounded head; slightly narrower at the chin for a premium feel.
+  Two thin closed-eye crescents are the only interior marks. No nose, no
+  whiskers, no cheeks, no tagged-on music note — the silhouette has to
+  read strong at 24 dp and those extras were turning it into a cartoon.
+
+  Geometry is tuned so the ear tips sit just inside the 21-dp safe
+  zone on round adaptive-icon masks and nothing critical gets clipped.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -11,50 +17,35 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Kitty silhouette (cream). Two triangular ears flow straight into a
-         softly rounded chin. One continuous path so the edge reads as a
-         single iconic shape at small sizes. -->
+    <!-- Silhouette — head + ears as one closed path. Smooth C-curves on the
+         sides and chin keep the shape elegant without feeling soft or lazy. -->
     <path
-        android:fillColor="#FFFEF8"
+        android:fillColor="#FFFEF9"
         android:pathData="
-            M 30,38
-            L 22,20
-            C 21,18 24,17 25,19
-            L 44,30
-            C 50,28 58,28 64,30
-            L 83,19
-            C 84,17 87,18 86,20
-            L 78,38
-            C 82,46 84,56 80,66
-            C 75,78 66,85 54,85
-            C 42,85 33,78 28,66
-            C 24,56 26,46 30,38
+            M 22,34
+            L 27,15
+            C 27.5,13 30,13 31,14.5
+            L 42,30
+            C 48,28 60,28 66,30
+            L 77,14.5
+            C 78,13 80.5,13 81,15
+            L 86,34
+            C 90,48 88,67 76,77
+            C 66,85 42,85 32,77
+            C 20,67 18,48 22,34
             Z" />
 
-    <!-- Eye slits — closed-eye smile. Thin dark crescents, no hard dots, so
-         the cat reads as content / listening rather than cartoon. -->
+    <!-- Two closed-eye crescents — low-key, confident, no dots. -->
     <path
-        android:strokeColor="#1F1B1A"
-        android:strokeWidth="2.2"
+        android:strokeColor="#26201E"
+        android:strokeWidth="2.6"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M 41,54 Q 44.5,58 48,54" />
+        android:pathData="M 40,54 Q 44,58.5 48,54" />
     <path
-        android:strokeColor="#1F1B1A"
-        android:strokeWidth="2.2"
+        android:strokeColor="#26201E"
+        android:strokeWidth="2.6"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
-        android:pathData="M 60,54 Q 63.5,58 67,54" />
-
-    <!-- Integrated "music" accent — tiny eighth-note tail that curves out of
-         the right ear. Reads as an ear highlight at a glance, as a music
-         note if you look twice. This is the "kitty music app" anchor. -->
-    <path
-        android:fillColor="#1F1B1A"
-        android:pathData="
-            M 82,22
-            C 89,18 92,14 90,8
-            C 92,10 93,13 92,17
-            C 90,22 85,25 82,27
-            Z" />
+        android:pathData="M 60,54 Q 64,58.5 68,54" />
 </vector>

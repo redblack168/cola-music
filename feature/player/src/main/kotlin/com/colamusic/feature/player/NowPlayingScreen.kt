@@ -108,11 +108,21 @@ fun NowPlayingScreen(
     Column(
         Modifier.fillMaxSize().background(bgBrush).padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Refined top row: uppercase eyebrow-style title, back button on one
+        // side, quality chip on the other. Gives the screen a proper app-bar
+        // hierarchy without taking the vertical space of a full TopAppBar.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        ) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) }
-            Spacer(Modifier.size(8.dp))
-            Text(stringResource(com.colamusic.feature.player.R.string.now_playing_title),
-                style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.weight(1f))
+            Text(
+                stringResource(com.colamusic.feature.player.R.string.now_playing_title).uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = androidx.compose.ui.unit.TextUnit(1.4f, androidx.compose.ui.unit.TextUnitType.Sp),
+            )
             Spacer(Modifier.weight(1f))
             QualityChip(kind, song?.suffix, song?.bitRate)
         }
@@ -208,23 +218,51 @@ fun NowPlayingScreen(
             Text(formatMs(dur), style = MaterialTheme.typography.bodySmall)
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+        // Transport controls. The central play/pause button is an elevated
+        // circular filled surface — reads as the primary action on the
+        // screen and matches the patterns used by the premium music apps
+        // (Spotify, Apple Music, Tidal).
         Row(
-            Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            Modifier.fillMaxWidth().padding(bottom = 20.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = { vm.previous() }) {
-                Icon(Icons.Default.SkipPrevious, null, modifier = Modifier.size(40.dp))
-            }
-            IconButton(onClick = { vm.toggle() }) {
+            IconButton(onClick = { vm.previous() }, modifier = Modifier.size(52.dp)) {
                 Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    null, modifier = Modifier.size(64.dp),
+                    Icons.Default.SkipPrevious,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(36.dp),
                 )
             }
-            IconButton(onClick = { vm.next() }) {
-                Icon(Icons.Default.SkipNext, null, modifier = Modifier.size(40.dp))
+            Box(
+                Modifier
+                    .size(76.dp)
+                    .graphicsLayer {
+                        shadowElevation = 12f
+                        shape = androidx.compose.foundation.shape.CircleShape
+                        clip = false
+                    }
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(MaterialTheme.colorScheme.primary)
+                    .clickable(onClick = { vm.toggle() }),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(44.dp),
+                )
+            }
+            IconButton(onClick = { vm.next() }, modifier = Modifier.size(52.dp)) {
+                Icon(
+                    Icons.Default.SkipNext,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(36.dp),
+                )
             }
         }
     }
