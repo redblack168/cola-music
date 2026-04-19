@@ -71,8 +71,14 @@ class MusicService : MediaLibraryService() {
             .build()
         this.player = exo
 
+        // Tapping the media notification / dynamic-island tile should land
+        // on Now Playing, not the Home screen. We reuse the launcher intent
+        // but tag it with an extra that MainActivity translates into a nav
+        // push to the Now Playing route.
         val sessionActivityPendingIntent =
             packageManager.getLaunchIntentForPackage(packageName)?.let { intent ->
+                intent.putExtra(EXTRA_OPEN_NOW_PLAYING, true)
+                intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 PendingIntent.getActivity(
                     this, 0, intent,
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
@@ -127,5 +133,7 @@ class MusicService : MediaLibraryService() {
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "cola_playback"
         private const val NOTIFICATION_ID = 1001
+        /** Boolean extra MainActivity reads to route straight to Now Playing. */
+        const val EXTRA_OPEN_NOW_PLAYING = "com.colamusic.extra.OPEN_NOW_PLAYING"
     }
 }

@@ -55,6 +55,11 @@ class PlaylistDetailViewModel @Inject constructor(
         if (songs.isNotEmpty()) controller.playQueue(songs, 0)
     }
 
+    fun playShuffle() {
+        val songs = _state.value.songs
+        if (songs.isNotEmpty()) controller.playShuffle(songs)
+    }
+
     fun playFrom(index: Int) {
         val songs = _state.value.songs
         if (index in songs.indices) controller.playQueue(songs, index)

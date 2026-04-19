@@ -96,6 +96,11 @@ class SubsonicRepository @Inject constructor(
         detail.toDomain()
     }
 
+    suspend fun randomSongs(size: Int = 100): Outcome<List<Song>> = outcome {
+        api.getRandomSongs(size = size).response
+            .randomSongs?.song.orEmpty().map { it.toDomain() }
+    }
+
     suspend fun search(query: String): Outcome<SearchResult> = outcome {
         val s = api.search3(query).response.searchResult3 ?: Search3Body()
         SearchResult(

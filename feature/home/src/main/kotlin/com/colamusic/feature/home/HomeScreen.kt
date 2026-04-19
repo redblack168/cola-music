@@ -17,7 +17,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +57,18 @@ fun HomeScreen(
             Text("可乐音乐", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text("Navidrome 客户端", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(16.dp))
+            FilledTonalButton(
+                onClick = {
+                    vm.shuffleAll(onStarted = onNowPlayingClick)
+                },
+                enabled = !state.shuffling,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Default.Shuffle, null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (state.shuffling) "正在随机…" else "全库随机播放")
+            }
             Spacer(Modifier.height(20.dp))
 
             if (state.loading) {

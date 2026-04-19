@@ -1,5 +1,6 @@
 package com.colamusic
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -13,6 +14,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -25,6 +27,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import com.colamusic.feature.auth.LoginScreen
 import com.colamusic.feature.auth.SessionGateViewModel
 import com.colamusic.feature.downloads.DownloadsScreen
@@ -38,6 +42,7 @@ import com.colamusic.feature.search.SearchScreen
 import com.colamusic.feature.settings.DiagnosticsScreen
 import com.colamusic.feature.settings.SettingsScreen
 import com.colamusic.ui.LanguagePickerScreen
+import com.colamusic.ui.MiniPlayerBar
 import com.colamusic.ui.ThemePickerScreen
 
 object Routes {
@@ -61,17 +66,40 @@ object Routes {
 }
 
 @Composable
-fun ColaNavGraph(nav: NavHostController) {
+fun ColaNavGraph(
+    nav: NavHostController,
+    openNowPlayingFlow: StateFlow<Int>? = null,
+) {
     val gate: SessionGateViewModel = hiltViewModel()
     val isLoggedIn by gate.isLoggedIn.collectAsStateWithLifecycle()
     val start = if (isLoggedIn) Routes.Home else Routes.Login
+
+    // External route-to-NowPlaying signal (from media notification / dynamic
+    // island tap). drop(1) skips the initial value so we don't hop to Now
+    // Playing on every cold start.
+    if (openNowPlayingFlow != null) {
+        LaunchedEffect(openNowPlayingFlow, isLoggedIn) {
+            if (!isLoggedIn) return@LaunchedEffect
+            openNowPlayingFlow.drop(1).collect {
+                val current = nav.currentBackStackEntry?.destination?.route
+                if (current != Routes.NowPlaying) nav.navigate(Routes.NowPlaying)
+            }
+        }
+    }
 
     val showBottomBar = setOf(Routes.Home, Routes.Library, Routes.Search, Routes.Settings)
     Scaffold(
         bottomBar = {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
-            if (route in showBottomBar) BottomBar(nav, route ?: Routes.Home)
+            if (route in showBottomBar) {
+                Column {
+                    MiniPlayerBar(onTap = {
+                        if (route != Routes.NowPlaying) nav.navigate(Routes.NowPlaying)
+                    })
+                    BottomBar(nav, route ?: Routes.Home)
+                }
+            }
         }
     ) { inner ->
         NavHost(

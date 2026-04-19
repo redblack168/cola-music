@@ -10,6 +10,7 @@ import com.colamusic.core.network.dto.LyricsListResponse
 import com.colamusic.core.network.dto.OpenSubsonicExtensionsResponse
 import com.colamusic.core.network.dto.PlaylistDetailResponse
 import com.colamusic.core.network.dto.PlaylistsResponse
+import com.colamusic.core.network.dto.RandomSongsResponse
 import com.colamusic.core.network.dto.Search3Response
 import com.colamusic.core.network.dto.StarredResponse
 import com.colamusic.core.network.dto.SubsonicEnvelope
@@ -50,6 +51,15 @@ interface SubsonicApi {
         @Query("genre") genre: String? = null,
         @Query("musicFolderId") musicFolderId: String? = null,
     ): SubsonicEnvelope<AlbumListResponse>
+
+    @GET("rest/getRandomSongs.view")
+    suspend fun getRandomSongs(
+        @Query("size") size: Int = 100,
+        @Query("genre") genre: String? = null,
+        @Query("fromYear") fromYear: Int? = null,
+        @Query("toYear") toYear: Int? = null,
+        @Query("musicFolderId") musicFolderId: String? = null,
+    ): SubsonicEnvelope<RandomSongsResponse>
 
     @GET("rest/search3.view")
     suspend fun search3(

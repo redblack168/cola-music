@@ -25,8 +25,10 @@ import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -119,6 +121,10 @@ private fun AlbumBody(
                         vm.playAll()
                         onOpenNowPlaying()
                     },
+                    onShuffle = {
+                        vm.playShuffle()
+                        onOpenNowPlaying()
+                    },
                     onDownloadAll = { vm.downloadAll() },
                 )
             }
@@ -143,6 +149,7 @@ private fun AlbumHeader(
     totalDurationSec: Int,
     downloadQueued: Boolean,
     onPlayAll: () -> Unit,
+    onShuffle: () -> Unit,
     onDownloadAll: () -> Unit,
 ) {
     Column(Modifier.padding(16.dp)) {
@@ -191,7 +198,16 @@ private fun AlbumHeader(
             ) {
                 Icon(Icons.Default.PlayArrow, null)
                 Spacer(Modifier.width(6.dp))
-                Text("全部播放")
+                Text("播放")
+            }
+            Spacer(Modifier.width(8.dp))
+            FilledTonalButton(
+                onClick = onShuffle,
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Default.Shuffle, null)
+                Spacer(Modifier.width(6.dp))
+                Text("随机")
             }
             Spacer(Modifier.width(8.dp))
             OutlinedButton(
@@ -204,7 +220,7 @@ private fun AlbumHeader(
                     null,
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(if (downloadQueued) "已加入队列" else "下载专辑")
+                Text(if (downloadQueued) "已入队" else "下载")
             }
         }
     }

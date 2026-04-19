@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.colamusic.core.common.Outcome
 import com.colamusic.core.model.Album
 import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repo: SubsonicRepository,
+    private val controller: PlayerController,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()
@@ -46,10 +48,30 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    /** Pulls ~200 random songs from the server and plays them as a shuffled queue. */
+    fun shuffleAll(onStarted: () -> Unit = {}) {
+        _state.update { it.copy(shuffling = true) }
+        viewModelScope.launch {
+            when (val o = repo.randomSongs(size = 200)) {
+                is Outcome.Success -> {
+                    if (o.value.isNotEmpty()) {
+                        controller.playShuffle(o.value)
+                        onStarted()
+                    }
+                    _state.update { it.copy(shuffling = false) }
+                }
+                is Outcome.Failure -> _state.update {
+                    it.copy(shuffling = false, error = o.message ?: "随机播放失败")
+                }
+            }
+        }
+    }
 }
 
 data class HomeState(
     val loading: Boolean = true,
+    val shuffling: Boolean = false,
     val mostPlayed: List<Album> = emptyList(),
     val recent: List<Album> = emptyList(),
     val favorites: List<Album> = emptyList(),

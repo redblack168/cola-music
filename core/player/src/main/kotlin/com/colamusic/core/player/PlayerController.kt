@@ -159,6 +159,12 @@ class PlayerController @Inject constructor(
         }
     }
 
+    /** Shuffles [songs] and plays the queue from index 0. */
+    fun playShuffle(songs: List<Song>) {
+        if (songs.isEmpty()) return
+        playQueue(songs.shuffled(), startIndex = 0)
+    }
+
     fun playQueue(songs: List<Song>, startIndex: Int = 0) = scope.launch {
         if (songs.isEmpty()) return@launch
         songs.getOrNull(startIndex)?.let { prefetchMetadata(it) }

@@ -53,6 +53,17 @@ data class AlbumDetailDto(
 )
 
 @Serializable
+data class RandomSongsResponse(
+    val status: String,
+    val version: String,
+    val randomSongs: RandomSongsBody? = null,
+    val error: SubsonicError? = null,
+)
+
+@Serializable
+data class RandomSongsBody(val song: List<SongDto> = emptyList())
+
+@Serializable
 data class SongDto(
     val id: String,
     val title: String,

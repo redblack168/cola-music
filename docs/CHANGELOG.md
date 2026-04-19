@@ -2,6 +2,35 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.17] — 2026-04-19
+
+### Added
+- **Shuffle everywhere.** Three shuffle entry points:
+  - `全库随机播放` button at the top of the home screen pulls 200 random
+    songs via Subsonic `getRandomSongs.view` and plays them as a shuffled
+    queue. Lands directly on Now Playing.
+  - `随机` button on every album detail screen next to `播放` / `下载`
+    (shuffles that album's tracklist).
+  - `随机播放` button on every playlist detail screen next to `全部播放`
+    (shuffles the playlist).
+- New `PlayerController.playShuffle(songs)` extension — shuffles the list
+  on the client side and calls `playQueue(..., startIndex = 0)`, so the
+  behavior is the same across albums/playlists/random-songs callers.
+- New `SubsonicRepository.randomSongs(size)` + `getRandomSongs.view`
+  endpoint wiring + `RandomSongsResponse` DTO.
+
+### Changed
+- Launcher icon, v4 pipeline: face-centered crop now sits at `face_top -
+  4%` and `face_bot + 10%` with square width = face height. This removes
+  the ~10% empty margin above the ears that v0.3.16 still had. Both blue
+  eyes, both ears, and the chin all fit inside the round adaptive-icon
+  mask. Regenerated `mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher_foreground.png`.
+- Album detail action row compresses `全部播放 / 下载专辑` to `播放 / 随机 /
+  下载` to fit three weighted buttons side-by-side without wrapping.
+- versionCode 20, versionName 0.3.17.
+
+
+
 ## [0.3.5] — 2026-04-19
 
 ### Added

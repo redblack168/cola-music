@@ -16,8 +16,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -85,13 +87,24 @@ private fun PlaylistBody(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = { vm.playAll(); onOpenNowPlaying() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Default.PlayArrow, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("全部播放")
+                    Row(Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = { vm.playAll(); onOpenNowPlaying() },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.Default.PlayArrow, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("全部播放")
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        FilledTonalButton(
+                            onClick = { vm.playShuffle(); onOpenNowPlaying() },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.Default.Shuffle, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("随机播放")
+                        }
                     }
                 }
             }
