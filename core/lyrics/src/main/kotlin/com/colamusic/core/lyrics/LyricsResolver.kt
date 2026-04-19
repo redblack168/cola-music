@@ -12,16 +12,19 @@ import javax.inject.Singleton
 import kotlin.math.max
 
 /**
- * Walks enabled providers in priority order, scores every returned candidate, and
- * picks the best — or returns null if nothing crosses the auto-pick threshold.
+ * Walks every enabled provider, scores every returned candidate, and picks the
+ * best one. No short-circuit — for Chinese catalog that LRCLIB doesn't cover,
+ * the right answer is often on NetEase, and for pop hits both might return a
+ * candidate and we want the better one.
  *
  * Scoring:
  *   score = 0.45*titleSim + 0.30*artistSim + 0.15*albumSim + 0.10*durationProximity
  *   synced lyrics get +0.05 bonus
  *
- * Auto-pick rules:
- *   - best ≥ THRESHOLD_AUTO  AND  best - runnerUp ≥ MARGIN  → pick it
- *   - otherwise return the best candidate but flag low confidence so UI can offer manual retry.
+ * The minimum score is intentionally loose (0.40) so CJK normalization edge
+ * cases — T↔S still-mismatched chars, full/half-width, leading-numeric disc
+ * marks — don't cause complete-fail when a provider clearly returned the
+ * right song.
  */
 @Singleton
 class LyricsResolver @Inject constructor(
@@ -34,31 +37,55 @@ class LyricsResolver @Inject constructor(
     suspend fun resolve(request: LyricsRequest): Lyrics? {
         val enabledProviders = providers.filter { enabledGate.isEnabled(it.source) }
             .sortedByDescending { it.providerPriority() }
-        if (enabledProviders.isEmpty()) return null
+        if (enabledProviders.isEmpty()) {
+            Logx.w("resolver", "no enabled providers — check Settings → Lyrics sources")
+            return null
+        }
+        Logx.i(
+            "resolver",
+            "resolving \"${request.title}\" / \"${request.artist}\" across ${enabledProviders.size} providers",
+        )
 
-        val allScored = ArrayList<Scored>(8)
+        val allScored = ArrayList<Scored>(16)
         for (p in enabledProviders) {
             val candidates = runCatching { p.lookup(request) }
                 .onFailure { Logx.w("resolver", "provider ${p.source} failed: ${it.message}") }
                 .getOrDefault(emptyList())
-            for (c in candidates) allScored.add(score(request, c))
-            // Short-circuit: if a high-priority provider already found a very strong
-            // synced candidate, we can stop without hitting unofficial sources.
-            val best = allScored.maxByOrNull { it.total } ?: continue
-            if (best.total >= THRESHOLD_SHORTCIRCUIT && best.candidate.isSynced) {
-                Logx.d("resolver", "short-circuiting at ${p.source} with score ${best.total}")
-                break
+            if (candidates.isEmpty()) {
+                Logx.d("resolver", "${p.source}: no candidates")
+                continue
+            }
+            candidates.forEach { c ->
+                val scored = score(request, c)
+                allScored.add(scored)
+                Logx.d(
+                    "resolver",
+                    "${p.source} candidate score=${"%.3f".format(scored.total)} " +
+                        "title=\"${c.title}\" artist=\"${c.artist}\" synced=${c.isSynced}",
+                )
             }
         }
 
-        if (allScored.isEmpty()) return null
+        if (allScored.isEmpty()) {
+            Logx.i("resolver", "no candidates returned by any provider for songId=${request.songId}")
+            return null
+        }
         val sorted = allScored.sortedByDescending { it.total }
         val best = sorted.first()
-        val runnerUp = sorted.getOrNull(1)
-        val passesAuto = best.total >= THRESHOLD_AUTO &&
-            (runnerUp == null || (best.total - runnerUp.total) >= MARGIN)
 
-        if (!passesAuto && best.total < THRESHOLD_MINIMUM) return null
+        Logx.i(
+            "resolver",
+            "best match: ${best.candidate.source} score=${"%.3f".format(best.total)} " +
+                "synced=${best.candidate.isSynced}",
+        )
+
+        if (best.total < THRESHOLD_MINIMUM) {
+            Logx.w(
+                "resolver",
+                "best score ${"%.3f".format(best.total)} below minimum $THRESHOLD_MINIMUM — dropping",
+            )
+            return null
+        }
 
         return Lyrics(
             songId = request.songId,
@@ -97,8 +124,8 @@ class LyricsResolver @Inject constructor(
     private fun LyricsProvider.providerPriority(): Int = when (source) {
         LyricsSource.Navidrome, LyricsSource.NavidromeLegacy -> 100
         LyricsSource.Lrclib -> 75
-        LyricsSource.Netease -> 55
-        LyricsSource.QQMusic -> 50
+        LyricsSource.Netease -> 65
+        LyricsSource.QQMusic -> 60
         LyricsSource.Manual -> 10
         LyricsSource.None -> 0
     }
@@ -106,10 +133,7 @@ class LyricsResolver @Inject constructor(
     private data class Scored(val candidate: LyricsCandidate, val total: Float)
 
     companion object {
-        private const val THRESHOLD_SHORTCIRCUIT = 0.90f
-        private const val THRESHOLD_AUTO = 0.75f
-        private const val MARGIN = 0.10f
-        private const val THRESHOLD_MINIMUM = 0.55f
+        private const val THRESHOLD_MINIMUM = 0.40f
     }
 }
 

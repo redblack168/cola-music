@@ -255,6 +255,11 @@ class PlayerController @Inject constructor(
             val song = mediaItem?.toSongOrNull()
             if (song != null) {
                 _currentSong.value = song
+                // Refresh the stream-kind chip (original vs. transcoded etc.)
+                // AND kick a lyrics prefetch for the new track. Without this,
+                // auto-advance through a queue would never populate lyrics
+                // because prefetchMetadata is only called from play/playQueue.
+                prefetchMetadata(song)
                 scope.launch {
                     val policy = preferences.policy.first()
                     val allow = preferences.allowMobileOriginal.first()
