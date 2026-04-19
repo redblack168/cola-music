@@ -2,6 +2,19 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.20] — 2026-04-19
+
+### Changed
+- **Icon: the v0.3.17 Cola (v4 pipeline), restored.** v0.3.19 had shipped
+  the v5 alpha-matted variant; user said "not this one, the previous one"
+  — they preferred the v4 render. Rebuilt from `process4.py`: face-centered
+  crop (4% top / 10% bottom margin), composited on cream, contrast 1.20 ×,
+  saturation 1.18 ×, unsharp mask r=1.4 / 140 %. That's the Cola portrait
+  shipped in v0.3.17.
+- versionCode 23, versionName 0.3.20.
+
+
+
 ## [0.3.19] — 2026-04-19
 
 ### Changed
