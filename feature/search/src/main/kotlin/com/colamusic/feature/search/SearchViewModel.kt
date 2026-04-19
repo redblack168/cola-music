@@ -17,8 +17,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,9 +31,15 @@ class SearchViewModel @Inject constructor(
     private val repo: SubsonicRepository,
     private val normalizer: TextNormalizer,
     private val ftsDao: AlbumSearchDao,
+    private val history: SearchHistoryStore,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = _state.asStateFlow()
+
+    /** Last 10 queries the user has successfully searched — shown when the
+     *  query field is empty so they can tap to re-run a previous search. */
+    val recentQueries: StateFlow<List<String>> = history.recent
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private var searchJob: Job? = null
 
@@ -67,8 +75,21 @@ class SearchViewModel @Inject constructor(
                 mergeResults(a, b, locals)
             }
             _state.update { it.copy(busy = false, result = merged) }
+
+            // Record to history on non-empty match — a query that returns
+            // zero of everything is usually a typo and cluttering history
+            // with those would just be noise.
+            val hasResults = merged.artists.isNotEmpty() ||
+                merged.albums.isNotEmpty() ||
+                merged.songs.isNotEmpty()
+            if (hasResults) history.record(raw)
         }
     }
+
+    fun runRecent(query: String) = updateQuery(query)
+
+    fun clearRecent() = viewModelScope.launch { history.clear() }
+    fun removeRecent(query: String) = viewModelScope.launch { history.remove(query) }
 
     private fun mergeResults(
         a: SearchResult?,

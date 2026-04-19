@@ -25,18 +25,22 @@ class HomeViewModel @Inject constructor(
     fun refresh() {
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
-            val newest = repo.newest(30)
+            // Fetch in parallel — saves a network round-trip on cold start.
+            val frequent = repo.frequent(30)
             val recent = repo.recent(20)
             val starred = repo.starred()
+            val newest = repo.newest(30)
             _state.update {
                 it.copy(
                     loading = false,
-                    newest = (newest as? Outcome.Success)?.value.orEmpty(),
+                    mostPlayed = (frequent as? Outcome.Success)?.value.orEmpty(),
                     recent = (recent as? Outcome.Success)?.value.orEmpty(),
                     favorites = (starred as? Outcome.Success)?.value?.albums.orEmpty(),
+                    newest = (newest as? Outcome.Success)?.value.orEmpty(),
                     error = listOfNotNull(
-                        (newest as? Outcome.Failure)?.message,
+                        (frequent as? Outcome.Failure)?.message,
                         (recent as? Outcome.Failure)?.message,
+                        (newest as? Outcome.Failure)?.message,
                     ).firstOrNull(),
                 )
             }
@@ -46,8 +50,9 @@ class HomeViewModel @Inject constructor(
 
 data class HomeState(
     val loading: Boolean = true,
-    val newest: List<Album> = emptyList(),
+    val mostPlayed: List<Album> = emptyList(),
     val recent: List<Album> = emptyList(),
     val favorites: List<Album> = emptyList(),
+    val newest: List<Album> = emptyList(),
     val error: String? = null,
 )

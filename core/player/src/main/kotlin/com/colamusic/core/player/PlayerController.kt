@@ -280,6 +280,19 @@ class PlayerController @Inject constructor(
         _isPlaying.value = c.isPlaying
         _positionMs.value = c.currentPosition
         _durationMs.value = if (c.duration > 0) c.duration else 0L
+        // Mirror the currently-loaded MediaItem into _currentSong. Without
+        // this, after a process death + relaunch the controller reconnects to
+        // the running MediaLibraryService but our currentSong stays null —
+        // NowPlayingViewModel never sees a transition, lyrics never re-fetch
+        // from cache, and the lyrics panel sits forever on "searching".
+        val mi = runCatching { c.currentMediaItem }.getOrNull()
+        val song = mi?.toSongOrNull()
+        if (song != null && _currentSong.value?.id != song.id) {
+            _currentSong.value = song
+            // Cheap: lyrics are already cached on disk for played-recently
+            // songs, so loadFor returns instantly without hitting the network.
+            prefetchMetadata(song)
+        }
     }
 
     private fun Song.toMediaItem(info: StreamInfo): MediaItem =

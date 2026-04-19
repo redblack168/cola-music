@@ -62,13 +62,26 @@ fun HomeScreen(
                     Text("加载出错：$it", color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(12.dp))
                 }
+                // Order per v0.3.12 product brief:
+                //   1. 最多播放 — most-played comes first (new default anchor).
+                //   2. 最近播放 — recent-played sits right under it.
+                //   3. 我的收藏 — starred albums.
+                //   4. 最近添加 — moved to the bottom; was previously the top row.
+                if (state.mostPlayed.isNotEmpty()) {
+                    AlbumRow("最多播放", state.mostPlayed, policy, onAlbumClick)
+                    Spacer(Modifier.height(16.dp))
+                }
+                if (state.recent.isNotEmpty()) {
+                    AlbumRow("最近播放", state.recent, policy, onAlbumClick)
+                    Spacer(Modifier.height(16.dp))
+                }
                 if (state.favorites.isNotEmpty()) {
                     AlbumRow("我的收藏", state.favorites, policy, onAlbumClick)
                     Spacer(Modifier.height(16.dp))
                 }
-                AlbumRow("最近添加", state.newest, policy, onAlbumClick)
-                Spacer(Modifier.height(16.dp))
-                AlbumRow("最近播放", state.recent, policy, onAlbumClick)
+                if (state.newest.isNotEmpty()) {
+                    AlbumRow("最近添加", state.newest, policy, onAlbumClick)
+                }
             }
         }
     }

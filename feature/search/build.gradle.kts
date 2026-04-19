@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
     implementation(libs.coil.compose)
+    implementation(libs.datastore.preferences)
     implementation(libs.coroutines.android)
     debugImplementation(libs.compose.ui.tooling)
 }
