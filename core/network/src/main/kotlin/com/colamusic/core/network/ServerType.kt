@@ -16,29 +16,17 @@ enum class ServerType(
         displayName = "Navidrome / OpenSubsonic",
         supported = true,
     ),
-    Jellyfin(
-        id = "jellyfin",
-        displayName = "Jellyfin",
-        supported = false,
-        comingInVersion = "0.4.1",
-    ),
     Emby(
         id = "emby",
         displayName = "Emby",
         supported = false,
-        comingInVersion = "0.4.2",
+        comingInVersion = "0.4.1",
     ),
     Plex(
         id = "plex",
         displayName = "Plex",
         supported = false,
-        comingInVersion = "0.4.3",
-    ),
-    Kodi(
-        id = "kodi",
-        displayName = "Kodi",
-        supported = false,
-        comingInVersion = "0.4.4",
+        comingInVersion = "0.4.2",
     );
 
     companion object {
