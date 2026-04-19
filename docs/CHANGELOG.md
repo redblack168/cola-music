@@ -2,6 +2,18 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.21] — 2026-04-19
+
+### Changed
+- **Icon: Cola's face fills the entire tile.** v0.3.20's v4 render had
+  ~17 % of the tile framing the face (4% top / 10% bot + 95% safe-zone).
+  v6 pipeline drops that to zero: top margin 0 %, bottom margin 6 %,
+  SAFE_RATIO = 1.0. Now the face spans the full 432 × 432 render — the
+  round adaptive-icon mask provides the only visible margin.
+- versionCode 24, versionName 0.3.21.
+
+
+
 ## [0.3.20] — 2026-04-19
 
 ### Changed
