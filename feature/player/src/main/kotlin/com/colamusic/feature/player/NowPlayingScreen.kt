@@ -126,28 +126,11 @@ fun NowPlayingScreen(
             Spacer(Modifier.weight(1f))
             QualityChip(kind, song?.suffix, song?.bitRate)
         }
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            ModeToggleChip(
-                selected = pagerState.currentPage == 0,
-                icon = Icons.Default.Album,
-                label = stringResource(com.colamusic.feature.player.R.string.np_cover),
-                onClick = { coScope.launch { pagerState.animateScrollToPage(0) } },
-            )
-            Spacer(Modifier.width(8.dp))
-            ModeToggleChip(
-                selected = pagerState.currentPage == 1,
-                icon = Icons.Default.Lyrics,
-                label = stringResource(com.colamusic.feature.player.R.string.np_lyrics),
-                onClick = { coScope.launch { pagerState.animateScrollToPage(1) } },
-            )
-        }
         Spacer(Modifier.height(12.dp))
 
+        // Cover / Lyrics chip toggle was removed in v0.3.13 — swipe + the
+        // pill page indicator already communicate mode; the chips were
+        // redundant and visually heavy.
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth().weight(1f),
