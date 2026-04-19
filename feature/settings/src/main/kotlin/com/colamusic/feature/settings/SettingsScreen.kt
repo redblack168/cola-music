@@ -35,6 +35,7 @@ fun SettingsScreen(
     onOpenDiagnostics: () -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenTheme: () -> Unit,
+    onOpenLanguage: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -106,6 +107,11 @@ fun SettingsScreen(
             modifier = Modifier.clickable { onOpenTheme() },
         )
         ListItem(
+            headlineContent = { Text("语言 · Language") },
+            supportingContent = { Text("默认跟随手机系统语言 · Follow phone by default") },
+            modifier = Modifier.clickable { onOpenLanguage() },
+        )
+        ListItem(
             headlineContent = { Text("下载管理") },
             supportingContent = { Text("查看和管理已下载的歌曲") },
             modifier = Modifier.clickable { onOpenDownloads() },
@@ -120,7 +126,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "可乐音乐 v0.3.6  ·  MIT License",
+            "可乐音乐 v0.3.8  ·  MIT License",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.clickable {

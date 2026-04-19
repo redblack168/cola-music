@@ -1,9 +1,15 @@
 package com.colamusic.feature.player
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -58,6 +64,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -250,28 +257,96 @@ private fun CoverPanel(
     isPlaying: Boolean,
     onTap: () -> Unit,
 ) {
+    // Ambient color extracted from the album art's Palette.
+    val ambient = rememberAmbientColors(key = coverUrl)
+
+    // "Breathing" cover — subtle 1.0 ↔ 1.03 scale while playing; frozen on pause.
+    val infinite = rememberInfiniteTransition(label = "cover-breath")
+    val breath by infinite.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.03f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "cover-breath-val",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isPlaying) breath else 1f,
+        animationSpec = tween(600),
+        label = "cover-scale",
+    )
+
+    val ambientVibrant = ambient.value.vibrant.takeOrElse { MaterialTheme.colorScheme.primary }
+    val ambientDominant = ambient.value.dominant.takeOrElse { MaterialTheme.colorScheme.primaryContainer }
+
     Column(
         Modifier.fillMaxSize().clickable(onClick = onTap),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // Glow halo behind the cover, painted from the album's dominant color.
         Box(
-            Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+            Modifier.fillMaxWidth().aspectRatio(1f),
+            contentAlignment = Alignment.Center,
         ) {
-            if (coverUrl != null) {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
+            // Radial ambient glow — larger than the cover so it bleeds softly.
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            ambientVibrant.copy(alpha = if (isPlaying) 0.55f else 0.3f),
+                            ambientDominant.copy(alpha = 0.15f),
+                            Color.Transparent,
+                        ),
+                        center = center,
+                        radius = size.minDimension * 0.75f,
+                    ),
+                    radius = size.minDimension * 0.75f,
+                    center = center,
                 )
+            }
+            // The cover itself, with breathing scale + rounded shadow card.
+            Box(
+                Modifier
+                    .fillMaxWidth(0.88f)
+                    .aspectRatio(1f)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        shadowElevation = 24f
+                        shape = RoundedCornerShape(20.dp)
+                        clip = true
+                    }
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                if (coverUrl != null) {
+                    AsyncImage(
+                        model = coverUrl,
+                        contentDescription = title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        onState = { extractAmbientColors(it, ambient) },
+                    )
+                }
             }
         }
         Spacer(Modifier.height(12.dp))
-        WaveVisualizer(
-            isPlaying = isPlaying,
-            modifier = Modifier.fillMaxWidth().height(72.dp),
-        )
+        // Two stacked visualizers: soft sine wave over the EQ bars — equalizer
+        // bars give the "pulse" Spotify does, the waves give the ambient flow.
+        Box(Modifier.fillMaxWidth().height(64.dp)) {
+            EqBarsVisualizer(
+                isPlaying = isPlaying,
+                modifier = Modifier.fillMaxSize(),
+                barColor = ambientVibrant.copy(alpha = 0.85f),
+                accentColor = MaterialTheme.colorScheme.secondary,
+            )
+            WaveVisualizer(
+                isPlaying = isPlaying,
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.7f },
+                baseColor = ambientVibrant,
+                accentColor = MaterialTheme.colorScheme.secondary,
+            )
+        }
     }
 }
 

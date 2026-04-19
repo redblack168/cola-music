@@ -37,6 +37,7 @@ import com.colamusic.feature.player.NowPlayingScreen
 import com.colamusic.feature.search.SearchScreen
 import com.colamusic.feature.settings.DiagnosticsScreen
 import com.colamusic.feature.settings.SettingsScreen
+import com.colamusic.ui.LanguagePickerScreen
 import com.colamusic.ui.ThemePickerScreen
 
 object Routes {
@@ -49,6 +50,7 @@ object Routes {
     const val Diagnostics = "diagnostics"
     const val Downloads = "downloads"
     const val Theme = "theme"
+    const val Language = "language"
     const val Album = "album/{albumId}"
     const val Artist = "artist/{artistId}?name={name}"
     const val Playlist = "playlist/{playlistId}"
@@ -113,6 +115,7 @@ fun ColaNavGraph(nav: NavHostController) {
                     onOpenDiagnostics = { nav.navigate(Routes.Diagnostics) },
                     onOpenDownloads = { nav.navigate(Routes.Downloads) },
                     onOpenTheme = { nav.navigate(Routes.Theme) },
+                    onOpenLanguage = { nav.navigate(Routes.Language) },
                 )
             }
             composable(Routes.Diagnostics) {
@@ -123,6 +126,9 @@ fun ColaNavGraph(nav: NavHostController) {
             }
             composable(Routes.Theme) {
                 ThemePickerScreen(onBack = { nav.popBackStack() })
+            }
+            composable(Routes.Language) {
+                LanguagePickerScreen(onBack = { nav.popBackStack() })
             }
             composable(Routes.NowPlaying) {
                 NowPlayingScreen(onBack = { nav.popBackStack() })

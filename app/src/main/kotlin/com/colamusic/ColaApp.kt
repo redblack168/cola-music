@@ -7,12 +7,15 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.colamusic.core.network.SessionStore
 import com.colamusic.sync.LibrarySyncScheduler
+import com.colamusic.ui.LanguagePreferences
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -21,6 +24,7 @@ class ColaApp : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var sessionStore: SessionStore
     @Inject lateinit var librarySync: LibrarySyncScheduler
+    @Inject lateinit var languagePrefs: LanguagePreferences
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -34,6 +38,18 @@ class ColaApp : Application(), Configuration.Provider {
         super.onCreate()
         createNotificationChannels()
         observeSessionAndSync()
+        applyStoredLanguage()
+    }
+
+    private fun applyStoredLanguage() {
+        // Restore the per-app language pin before the first Activity inflates.
+        // System-default (empty list) is a no-op so this is safe on fresh installs.
+        appScope.launch {
+            runCatching {
+                val lang = languagePrefs.language.first()
+                languagePrefs.apply(lang)
+            }
+        }
     }
 
     private fun observeSessionAndSync() {
