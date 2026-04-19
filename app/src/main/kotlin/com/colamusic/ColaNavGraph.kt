@@ -20,15 +20,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.colamusic.feature.auth.LoginScreen
 import com.colamusic.feature.auth.SessionGateViewModel
 import com.colamusic.feature.home.HomeScreen
+import com.colamusic.feature.library.AlbumDetailScreen
 import com.colamusic.feature.library.LibraryScreen
 import com.colamusic.feature.player.NowPlayingScreen
 import com.colamusic.feature.search.SearchScreen
+import com.colamusic.feature.settings.DiagnosticsScreen
 import com.colamusic.feature.settings.SettingsScreen
 
 object Routes {
@@ -38,6 +42,9 @@ object Routes {
     const val Search = "search"
     const val Settings = "settings"
     const val NowPlaying = "now_playing"
+    const val Diagnostics = "diagnostics"
+    const val Album = "album/{albumId}"
+    fun album(id: String) = "album/$id"
 }
 
 @Composable
@@ -46,11 +53,12 @@ fun ColaNavGraph(nav: NavHostController) {
     val isLoggedIn by gate.isLoggedIn.collectAsStateWithLifecycle()
     val start = if (isLoggedIn) Routes.Home else Routes.Login
 
+    val showBottomBar = setOf(Routes.Home, Routes.Library, Routes.Search, Routes.Settings)
     Scaffold(
         bottomBar = {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
-            if (route != null && route != Routes.Login) BottomBar(nav, route)
+            if (route in showBottomBar) BottomBar(nav, route ?: Routes.Home)
         }
     ) { inner ->
         NavHost(
@@ -65,13 +73,13 @@ fun ColaNavGraph(nav: NavHostController) {
             }
             composable(Routes.Home) {
                 HomeScreen(
-                    onAlbumClick = {},
+                    onAlbumClick = { album -> nav.navigate(Routes.album(album.id)) },
                     onNowPlayingClick = { nav.navigate(Routes.NowPlaying) }
                 )
             }
             composable(Routes.Library) {
                 LibraryScreen(
-                    onAlbumClick = {},
+                    onAlbumClick = { album -> nav.navigate(Routes.album(album.id)) },
                     onNowPlayingClick = { nav.navigate(Routes.NowPlaying) }
                 )
             }
@@ -79,10 +87,25 @@ fun ColaNavGraph(nav: NavHostController) {
                 SearchScreen(onResultClick = { nav.navigate(Routes.NowPlaying) })
             }
             composable(Routes.Settings) {
-                SettingsScreen(onLoggedOut = { nav.navigate(Routes.Login) { popUpTo(0) } })
+                SettingsScreen(
+                    onLoggedOut = { nav.navigate(Routes.Login) { popUpTo(0) } },
+                    onOpenDiagnostics = { nav.navigate(Routes.Diagnostics) },
+                )
+            }
+            composable(Routes.Diagnostics) {
+                DiagnosticsScreen(onBack = { nav.popBackStack() })
             }
             composable(Routes.NowPlaying) {
                 NowPlayingScreen(onBack = { nav.popBackStack() })
+            }
+            composable(
+                route = Routes.Album,
+                arguments = listOf(navArgument("albumId") { type = NavType.StringType }),
+            ) {
+                AlbumDetailScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenNowPlaying = { nav.navigate(Routes.NowPlaying) },
+                )
             }
         }
     }

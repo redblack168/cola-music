@@ -31,3 +31,6 @@ dependencies {
     androidTestImplementation(libs.room.testing)
     testImplementation(libs.junit)
 }
+
+// Room schema export not required (exportSchema=false). Kept minimal deps.
+

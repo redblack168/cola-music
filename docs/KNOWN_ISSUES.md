@@ -1,17 +1,17 @@
-# Known Issues · v0.1.0
+# Known Issues · v0.2.0
 
 ## P0 (would block a wide release, but acceptable for personal-sideload v1)
 
 None — the current set of features is designed to ship as-is for the
 acceptance gate.
 
-## P1 (will fix in v0.2)
+## P1 (will fix in v0.3)
 
-- **No Room FTS4 search index** yet. Searches hit the server twice (raw + normalized form); no local index. Fast on small libraries, slower on 20k+ cold cache.
-- **No library sync WorkManager job.** Search currently depends on server availability. If the server is offline, search returns nothing rather than serving from cache.
-- **Album detail screen navigation is stubbed.** Tapping an album on Home/Library doesn't yet route into an album detail — clicks are wired up (`onAlbumClick`) but the destination is TBD. Workaround: use the queue from Search.
-- **Diagnostics UI is not yet mounted.** `EventLog` collects events; the screen that renders them is the next task.
-- **`QQMusicLyricsProvider` is a no-op stub.** The architecture, settings toggle, and circuit breaker pattern are in place; the actual API calls need to be filled in (with attention to the upstream API's obfuscated params).
+- **`QQMusicLyricsProvider` is still a no-op stub.** Architecture, settings toggle, and circuit breaker pattern are in place; actual API calls need to be filled in.
+- **`PinyinIndexer` seed is small (~120 chars).** Enough for major pop-title characters but long-tail titles miss pinyin initials. Full table will ship as an asset in v0.3.
+- **OpenCC phrase dict not bundled.** Character-level fold is active (seed + optional asset); phrase-level fold loader is in place but no `t2s_phrase.json` asset ships yet.
+- **AlbumSyncWorker does full re-paging on every run.** Not incremental yet — a future enhancement will use `ifModifiedSince` on OpenSubsonic servers that support it.
+- **Downloads subsystem is a stub.** M5 scope.
 
 ## P2 (planned for v0.3+)
 

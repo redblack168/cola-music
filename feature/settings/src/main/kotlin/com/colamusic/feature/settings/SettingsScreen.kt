@@ -1,5 +1,6 @@
 package com.colamusic.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,38 +18,65 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.colamusic.core.model.QualityPolicy
 
+private const val DIAGNOSTICS_TAP_COUNT = 7
+
 @Composable
 fun SettingsScreen(
     onLoggedOut: () -> Unit,
+    onOpenDiagnostics: () -> Unit,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    var versionTapCount by remember { mutableIntStateOf(0) }
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
         Text("设置", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(4.dp))
-        Text("服务器：${state.serverUrl ?: "未登录"}",
+        Text(
+            "服务器：${state.serverUrl ?: "未登录"}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("用户名：${state.username ?: "-"}",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            "用户名：${state.username ?: "-"}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         Spacer(Modifier.height(20.dp))
         Text("播放质量", style = MaterialTheme.typography.titleMedium)
-        QualityOption(QualityPolicy.Original, "原始音质（推荐）",
-            "始终请求 format=raw，禁用服务器转码", state.policy, vm::setPolicy)
-        QualityOption(QualityPolicy.LosslessPreferred, "无损优先",
-            "与原始音质等效；若服务器被迫降级会提示", state.policy, vm::setPolicy)
-        QualityOption(QualityPolicy.MobileSmart, "移动网络智能",
-            "Wi-Fi 原始 / 移动数据 320kbps 智能切换", state.policy, vm::setPolicy)
+        QualityOption(
+            QualityPolicy.Original,
+            "原始音质（推荐）",
+            "始终请求 format=raw，禁用服务器转码",
+            state.policy,
+            vm::setPolicy,
+        )
+        QualityOption(
+            QualityPolicy.LosslessPreferred,
+            "无损优先",
+            "与原始音质等效；若服务器被迫降级会提示",
+            state.policy,
+            vm::setPolicy,
+        )
+        QualityOption(
+            QualityPolicy.MobileSmart,
+            "移动网络智能",
+            "Wi-Fi 原始 / 移动数据 320kbps 智能切换",
+            state.policy,
+            vm::setPolicy,
+        )
 
         Spacer(Modifier.height(20.dp))
         HorizontalDivider()
@@ -77,10 +105,24 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "可乐音乐 v0.1.0  ·  MIT License",
+            "可乐音乐 v0.2.0  ·  MIT License",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clickable {
+                versionTapCount += 1
+                if (versionTapCount >= DIAGNOSTICS_TAP_COUNT) {
+                    versionTapCount = 0
+                    onOpenDiagnostics()
+                }
+            },
         )
+        if (versionTapCount in 3..6) {
+            Text(
+                "再点 ${DIAGNOSTICS_TAP_COUNT - versionTapCount} 次打开诊断面板",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

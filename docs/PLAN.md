@@ -32,23 +32,32 @@ off (April 2026).
   - Disk + Room cache with TTL and manual rematch
   - Synced lyric UI with tap-to-seek
 
-- **M4 — Search + large-library** ⏳ next
-  - Room FTS4 normalized index
-  - WorkManager incremental library sync
+- **M4 — Search + large-library** ✅ 2026-04-19 (v0.2)
+  - Room FTS4 normalized index (`album_search` virtual table)
+  - WorkManager library sync (`AlbumSyncWorker`, 6h periodic + on-login)
   - Server+local search merge with dedup
-  - Scroll profiling under simulated 20k albums
+  - Pinyin initials indexer (seed ~120 chars; asset expansion for v0.3)
 
-- **M5 — Downloads + offline** ⏳ planned
+- **M5 — Downloads + offline** ⏳ next
   - Media3 `DownloadManager` + WorkManager queue
   - Wi-Fi gate, LRU eviction, storage cap
   - Unified `MediaSource.Factory` for online + offline
 
-- **M6 — Diagnostics + docs + release** ⏳ partial
+- **M6 — Diagnostics + docs + release** ✅ 2026-04-19 (v0.2)
   - ✅ EventLog ring buffer
-  - ⏳ Hidden diagnostics screen (settings → about → 7x version tap)
+  - ✅ Hidden diagnostics screen (settings → 7x version tap)
   - ✅ README (bilingual), PLAN, ARCHITECTURE, TEST_REPORT, KNOWN_ISSUES, INSTALL_ON_PHONE, NAVIDROME_INTEGRATION_NOTES
-  - ✅ Debug APK
-  - ⏳ Release APK (debug-signed) via `./gradlew :app:assembleRelease`
+  - ✅ Debug APK (v0.2 = 23 MB)
+  - ✅ Unit tests (29+ across core:lyrics / core:network / core:database)
+  - ⏳ Release APK signing (scheduled for v0.3)
+
+## v0.2 Additions (2026-04-19)
+
+- **Album detail screen** reachable from Home & Library taps. Play-all + per-song play + star toggle.
+- **Diagnostics screen** — tap the Settings version footer 7×.
+- **Room FTS4 + pinyin indexer** — `album_search` virtual table populated by `AlbumSyncWorker`.
+- **Auto sync on login** via `ColaApp.observeSessionAndSync`.
+- **Unit tests** — TextNormalizer (case, T↔S, noise tokens, featuring), Similarity, LrcParser, AuthInterceptor, FtsQuery, PinyinIndexer.
 
 ## Acceptance Gate Status (v1)
 

@@ -59,7 +59,8 @@ class TextNormalizer @Inject constructor() {
         s = NOISE_REGEX.matcher(s).replaceAll(" ")
 
         // Stage 7: featuring / collab separator normalization.
-        s = FEATURING_REGEX.matcher(s).replaceAll(" & ")
+        // Use an alphanumeric token so stage 8 (punct strip) doesn't remove it.
+        s = FEATURING_REGEX.matcher(s).replaceAll(" and ")
 
         // Stage 8: punctuation cleanup — keep letters, digits, CJK, spaces only.
         s = PUNCT_REGEX.matcher(s).replaceAll(" ")

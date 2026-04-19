@@ -1,21 +1,38 @@
-# Next Steps
+# Next Steps (v0.3+)
 
-Ordered by impact × effort. Pick top items as v0.2 scope.
+Ordered by impact × effort. v0.2 shipped album detail, diagnostics, FTS4,
+WorkManager sync, pinyin-initials seed, and unit tests (see CHANGELOG).
 
 ## High impact, low effort
-1. **Wire album detail screen.** `onAlbumClick` already routes the album — add a `nav.navigate("album/${id}")` target with a simple `AlbumDetailScreen` that lists songs and plays the queue via `PlayerController.playQueue(...)`.
-2. **Diagnostics screen.** `EventLog` already records; add a `DiagnosticsScreen` inside `feature:settings`, hidden behind tapping the version footer 7 times.
-3. **Unit tests for `TextNormalizer`.** The normalization pipeline is the highest-leverage thing to pin down with tests before adding pinyin, because any regression here silently degrades lyric match rates.
+1. **Full OpenCC asset.** Drop `t2s_char.json` (~500 KB, ~8k chars) and
+   optionally `t2s_phrase.json` into `core/lyrics/src/main/assets/opencc/`.
+   The loader already merges them with the built-in seed on first use.
+2. **Full pinyin asset.** Replace the ~120-char seed in `PinyinIndexer` with
+   a bundled `pinyin/initials.json` (~3 KB packed). No API change required.
+3. **Incremental album sync.** `AlbumSyncWorker` currently full-pages on every
+   run. Use `ifModifiedSince` on OpenSubsonic servers that support it; fall
+   back to full sync when it's missing.
 
 ## High impact, medium effort
-4. **Room FTS4 index + WorkManager sync.** Implement `AlbumSyncWorker`; populate `cached_albums` with normalized fields; add an FTS4 virtual table over the normalized columns; use it in `SearchViewModel` as a parallel branch merged with server `search3`.
-5. **Full OpenCC dict asset.** Grab `t2s_char.json` from the OpenCC project and drop it into `core/lyrics/src/main/assets/opencc/`. Optional: `t2s_phrase.json` for phrase-level folding. Current seed is ~150 chars; full dict is ~8k.
-6. **Swap to proper QQ Music unofficial impl.** There are community-maintained reverse-engineered clients; pin one, embed its request signing, keep behind the opt-in flag + circuit breaker that's already wired.
+4. **Downloads (M5).** `DownloadService` + `OfflineMediaSource.Factory` +
+   WorkManager queue. Storage cap, LRU eviction, Wi-Fi gate. Unified pipeline
+   so offline playback reuses the same `MediaItem` flow.
+5. **Swap in a real QQ Music unofficial impl.** Architecture, circuit breaker,
+   and settings toggle are already wired — just need request signing.
+6. **Release signing.** Generate a keystore, add `release-signing.properties`
+   (gitignored), wire `signingConfigs.release`. Publish a signed APK.
 
 ## Medium impact, medium effort
-7. **Downloads (M5).** `DownloadService` + `OfflineMediaSource.Factory` + a WorkManager-backed queue. Storage cap, LRU eviction, Wi-Fi gate. Unified pipeline so offline playback uses the same `MediaItem` flow.
-8. **Pinyin index.** Bundle a compact Han→Pinyin table (e.g. pinyin4j subset). Expose a "按拼音" sort in the library. Use first-letter buckets for jump nav.
-9. **Release signing.** Generate a keystore, add a `release-signing.properties` (gitignored), wire `signingConfigs.release`. Publish a signed APK for stable sideloading.
+7. **Artist detail screen** (albums + top songs grid).
+8. **Playlist detail + basic editing** (add / remove / reorder).
+9. **Sleep timer** + **widget** + **equalizer passthrough**.
+10. **Android Auto browser polish** — service is wired, UX needs tuning.
+
+## Lower priority / research
+- ReplayGain / normalization toggle.
+- Local device music import (MediaStore).
+- FFmpeg extension for ALAC / DSD (NDK-heavy).
+- Smart playlists DSL.
 
 ## Lower priority
 10. Android Auto media browser polish.
