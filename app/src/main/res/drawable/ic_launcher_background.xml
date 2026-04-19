@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Soft cream-to-rose backdrop tuned to make the silver-and-blue-eyed cat
-  silhouette pop without competing with it. The cat's coat is mostly cool
-  grays so the warm gradient gives the icon a friendly, brand-correct feel.
+  Three-stop diagonal gradient. Goes deep burgundy in the top-left corner to
+  a warm peach in the bottom-right, through a rich cola red in the middle.
+  Much more premium than a flat red or a flat two-stop gradient; reads as an
+  intentional brand mark rather than a default Material accent.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -12,9 +13,9 @@
     <path android:pathData="M0,0 L108,0 L108,108 L0,108 Z">
         <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
             <gradient
-                android:startColor="#FFE4D2"
-                android:centerColor="#F8B7B0"
-                android:endColor="#E07686"
+                android:startColor="#6B1420"
+                android:centerColor="#E23744"
+                android:endColor="#FFA76B"
                 android:startX="10" android:startY="10"
                 android:endX="98" android:endY="98"
                 android:type="linear" />

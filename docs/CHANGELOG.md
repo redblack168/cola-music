@@ -2,6 +2,31 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.18] — 2026-04-19
+
+### Changed
+- **Launcher icon reverted to the clean v0.3.9 vector silhouette.** The
+  photo-based cat (v0.3.14 → v0.3.17) never reached the visual bar you'd
+  expect from a launcher icon — rembg fringe, halos, and edge noise that
+  didn't fully go away even with alpha-matting. Restored the continuous
+  vector silhouette: one closed path for head + two ears, two thin
+  crescent eyes, three-stop burgundy → cola-red → peach gradient
+  background. Reads as a brand mark at 24 dp.
+- Deleted the PNG foreground mipmaps; adaptive icon points at
+  `@drawable/ic_launcher_foreground` directly.
+- Settings screen version footer is now dynamic — reads
+  `PackageManager.getPackageInfo().versionName` at runtime so it can't
+  drift out of sync with the installed APK again.
+- Lyrics manual picker gets editable `歌曲名` and `歌手` fields plus a
+  `重新搜索` button. Useful when server metadata is wrong (e.g. track
+  title stored as "track 03"): type the real title and the provider chain
+  re-runs. The picked candidate still writes under the real song id.
+
+### Internal
+- versionCode 21, versionName 0.3.18.
+
+
+
 ## [0.3.17] — 2026-04-19
 
 ### Added

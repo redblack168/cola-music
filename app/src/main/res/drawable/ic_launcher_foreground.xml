@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cola Music launcher foreground — refined abstract kitty.
+
+  One continuous white silhouette: two sharp ears flow straight into a
+  softly rounded head; slightly narrower at the chin for a premium feel.
+  Two thin closed-eye crescents are the only interior marks. No nose, no
+  whiskers, no cheeks, no tagged-on music note — the silhouette has to
+  read strong at 24 dp and those extras were turning it into a cartoon.
+
+  Geometry is tuned so the ear tips sit just inside the 21-dp safe
+  zone on round adaptive-icon masks and nothing critical gets clipped.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Silhouette — head + ears as one closed path. Smooth C-curves on the
+         sides and chin keep the shape elegant without feeling soft or lazy. -->
+    <path
+        android:fillColor="#FFFEF9"
+        android:pathData="
+            M 22,34
+            L 27,15
+            C 27.5,13 30,13 31,14.5
+            L 42,30
+            C 48,28 60,28 66,30
+            L 77,14.5
+            C 78,13 80.5,13 81,15
+            L 86,34
+            C 90,48 88,67 76,77
+            C 66,85 42,85 32,77
+            C 20,67 18,48 22,34
+            Z" />
+
+    <!-- Two closed-eye crescents — low-key, confident, no dots. -->
+    <path
+        android:strokeColor="#26201E"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 40,54 Q 44,58.5 48,54" />
+    <path
+        android:strokeColor="#26201E"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 60,54 Q 64,58.5 68,54" />
+</vector>

@@ -100,6 +100,7 @@ fun NowPlayingScreen(
             state = picker,
             onDismiss = vm::dismissLyricsPicker,
             onPick = vm::chooseCandidate,
+            onSearch = vm::searchWithOverride,
         )
     }
 
@@ -601,6 +602,7 @@ private fun LyricsPickerSheet(
     state: LyricsPickerState,
     onDismiss: () -> Unit,
     onPick: (com.colamusic.core.lyrics.LyricsCandidateView) -> Unit,
+    onSearch: (title: String, artist: String) -> Unit = { _, _ -> },
 ) {
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -611,11 +613,42 @@ private fun LyricsPickerSheet(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "排序按匹配分数,越上面越准。点击一条会立即应用并写入缓存。",
+                "歌曲名或歌手名错了?在下面改一改再重新搜索。选一条立即生效并写入缓存。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(12.dp))
+
+            var editTitle by remember(state.queryTitle) {
+                androidx.compose.runtime.mutableStateOf(state.queryTitle)
+            }
+            var editArtist by remember(state.queryArtist) {
+                androidx.compose.runtime.mutableStateOf(state.queryArtist)
+            }
+            androidx.compose.material3.OutlinedTextField(
+                value = editTitle,
+                onValueChange = { editTitle = it },
+                label = { Text("歌曲名") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(6.dp))
+            androidx.compose.material3.OutlinedTextField(
+                value = editArtist,
+                onValueChange = { editArtist = it },
+                label = { Text("歌手 (可选)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.Button(
+                onClick = { onSearch(editTitle, editArtist) },
+                enabled = editTitle.isNotBlank() && !state.loading,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("重新搜索")
+            }
+            Spacer(Modifier.height(12.dp))
             if (state.loading) {
                 Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                     androidx.compose.material3.CircularProgressIndicator()

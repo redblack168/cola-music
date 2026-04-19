@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,6 +41,12 @@ fun SettingsScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var versionTapCount by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    val versionName = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: ""
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
@@ -126,7 +133,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(24.dp))
         Text(
-            "可乐音乐 v0.3.17  ·  MIT License",
+            "可乐音乐 v$versionName  ·  MIT License",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.clickable {

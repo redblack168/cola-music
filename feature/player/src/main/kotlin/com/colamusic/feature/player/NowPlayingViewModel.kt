@@ -80,16 +80,44 @@ class NowPlayingViewModel @Inject constructor(
     val picker: StateFlow<LyricsPickerState> = _picker.asStateFlow()
 
     /** Open the picker for the currently-playing song. Fetches every
-     *  candidate from every enabled provider — best-first by score. */
+     *  candidate from every enabled provider — best-first by score.
+     *  Server metadata is used as the initial query, but the user can edit
+     *  the title/artist and re-run via [searchWithOverride]. */
     fun openLyricsPicker() {
         val s = song.value ?: return
-        _picker.update { it.copy(visible = true, loading = true, candidates = emptyList()) }
+        _picker.update {
+            it.copy(
+                visible = true,
+                loading = true,
+                candidates = emptyList(),
+                queryTitle = s.title,
+                queryArtist = s.artist.orEmpty(),
+            )
+        }
+        runPickerSearch(s.title, s.artist.orEmpty())
+    }
+
+    /** Re-query the provider chain using the user-supplied title/artist.
+     *  The override only affects matching — the picked candidate still
+     *  gets written under the real song id in the cache. */
+    fun searchWithOverride(title: String, artist: String) {
+        val t = title.trim()
+        if (t.isEmpty()) return
+        val a = artist.trim()
+        _picker.update {
+            it.copy(loading = true, candidates = emptyList(), queryTitle = t, queryArtist = a)
+        }
+        runPickerSearch(t, a)
+    }
+
+    private fun runPickerSearch(title: String, artist: String) {
+        val s = song.value ?: return
         viewModelScope.launch {
             val list = lyricsRepo.candidatesFor(
                 LyricsRequest(
                     songId = s.id,
-                    title = s.title,
-                    artist = s.artist,
+                    title = title,
+                    artist = artist.ifBlank { null },
                     album = s.album,
                     durationSec = s.duration,
                     track = s.track,
@@ -119,5 +147,7 @@ data class LyricsPickerState(
     val visible: Boolean = false,
     val loading: Boolean = false,
     val candidates: List<LyricsCandidateView> = emptyList(),
+    val queryTitle: String = "",
+    val queryArtist: String = "",
 )
 
