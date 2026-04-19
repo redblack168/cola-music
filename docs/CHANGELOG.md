@@ -2,6 +2,37 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.3.5] — 2026-04-19
+
+### Added
+
+- **Lyrics panel inside Now Playing.** Toggle chip at the top (封面 / 歌词)
+  cross-fades between the cover art and a full-screen synced-lyrics view.
+  Tap the cover to jump to lyrics; tap a lyric to jump to its timestamp.
+  Current line renders in headline-small bold + primary color; ±2 neighbor
+  lines in on-surface; further away fades to 60% alpha. Auto-scrolls on
+  timestamp change via `animateScrollToItem(active, scrollOffset = -200)`.
+- **Auto-fetch + cache lyrics on play.** `NowPlayingViewModel` observes
+  `currentSong`, checks `LyricsRepository.current`, and kicks
+  `loadFor(request, forceRefresh = false)` if the cached entry is for a
+  different song. `LyricsRepository` already caches hits on disk for 30
+  days and misses for 6 hours, so subsequent plays of the same song hit
+  Room + `filesDir/lyrics/<id>.lrc` with no network.
+- **Animated wave visualizer.** Three sine curves at different frequencies
+  and phases drawn in the cola palette, below the cover art. Amplitude
+  animates to 0.15× on pause so the screen stays alive but relaxed.
+  Procedural (no `android.media.audiofx.Visualizer` so no `RECORD_AUDIO`
+  permission needed).
+- Gradient background on Now Playing (`#1A0D12` → `colorScheme.background`)
+  for a proper "music app" feel instead of flat dark.
+
+### Changed
+- `core:player` already had `core:lyrics` on the classpath from v0.3.3;
+  `NowPlayingViewModel` now uses it via `LyricsRepository` injection.
+- versionCode 8, versionName 0.3.5.
+
+
+
 ## [0.3.4] — 2026-04-19
 
 ### Fixed (the actual actual crash)
