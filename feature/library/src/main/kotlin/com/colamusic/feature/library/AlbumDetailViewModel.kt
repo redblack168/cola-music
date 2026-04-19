@@ -8,7 +8,7 @@ import com.colamusic.core.download.DownloadRepository
 import com.colamusic.core.download.DownloadScheduler
 import com.colamusic.core.model.Album
 import com.colamusic.core.model.Song
-import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.network.MusicServerRepository
 import com.colamusic.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AlbumDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repo: SubsonicRepository,
+    private val repo: MusicServerRepository,
     private val controller: PlayerController,
     private val downloadRepo: DownloadRepository,
     private val downloadScheduler: DownloadScheduler,

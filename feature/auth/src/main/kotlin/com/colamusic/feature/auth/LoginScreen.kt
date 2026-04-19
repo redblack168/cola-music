@@ -1,19 +1,27 @@
 package com.colamusic.feature.auth
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -21,19 +29,59 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.colamusic.core.network.ServerType
 
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit, vm: LoginViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("可乐音乐 · Cola Music", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(8.dp))
-        Text("连接你的 Navidrome 服务器", style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.height(24.dp))
+        Text("连接你的音乐服务器", style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            "服务器类型 · Server",
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(6.dp))
+        val chipScroll = rememberScrollState()
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(chipScroll),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ServerType.entries.forEach { type ->
+                FilterChip(
+                    selected = state.serverType == type,
+                    onClick = { vm.updateServerType(type) },
+                    label = {
+                        Text(
+                            if (type.supported) type.displayName
+                            else "${type.displayName} · v${type.comingInVersion}",
+                        )
+                    },
+                    enabled = !state.busy,
+                )
+            }
+        }
+        if (!state.serverType.supported) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "${state.serverType.displayName} 支持即将上线 (v${state.serverType.comingInVersion})",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(
             value = state.url,

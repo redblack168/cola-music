@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.colamusic.core.lyrics.LyricsPreferences
 import com.colamusic.core.model.QualityPolicy
 import com.colamusic.core.network.SessionStore
-import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.network.MusicServerRepository
 import com.colamusic.core.player.PlayerPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val sessionStore: SessionStore,
-    private val repo: SubsonicRepository,
+    private val repo: MusicServerRepository,
     private val prefs: PlayerPreferences,
     private val lyricsPrefs: LyricsPreferences,
 ) : ViewModel() {

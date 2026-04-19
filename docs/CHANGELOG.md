@@ -2,6 +2,26 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.0] — 2026-04-19
+
+### Added
+- **`MusicServerRepository` abstraction.** Feature VMs (Home, Library,
+  Search, Album/Artist/Playlist detail, Login, Settings) now depend on the
+  interface instead of the concrete `SubsonicRepository`. `SubsonicRepository`
+  implements it; Hilt binds it as the default. This unblocks Jellyfin,
+  Emby, Plex, and Kodi backends landing in v0.4.x as drop-in implementations.
+- **`ServerType` enum + login server picker.** Login screen gains a scrollable
+  chip row: `Navidrome / OpenSubsonic` (working), `Jellyfin` (v0.4.1),
+  `Emby` (v0.4.2), `Plex` (v0.4.3), `Kodi` (v0.4.4). Selecting a
+  not-yet-supported backend shows an inline hint and refuses submit.
+
+### Changed
+- No behavioral changes to the Subsonic flow. Existing logins and caches
+  unaffected.
+- versionCode 27, versionName 0.4.0.
+
+
+
 ## [0.3.23] — 2026-04-19
 
 ### Added

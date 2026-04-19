@@ -9,7 +9,7 @@ import com.colamusic.core.common.Outcome
 import com.colamusic.core.database.entity.CachedAlbumEntity
 import com.colamusic.core.database.search.AlbumSearchIndexer
 import com.colamusic.core.lyrics.normalize.TextNormalizer
-import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.network.MusicServerRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -24,7 +24,7 @@ import dagger.assisted.AssistedInject
 class AlbumSyncWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val repo: SubsonicRepository,
+    private val repo: MusicServerRepository,
     private val indexer: AlbumSearchIndexer,
     private val normalizer: TextNormalizer,
 ) : CoroutineWorker(context, params) {

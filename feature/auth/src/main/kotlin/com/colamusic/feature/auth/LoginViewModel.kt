@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.colamusic.core.common.Outcome
 import com.colamusic.core.network.SessionProbe
+import com.colamusic.core.network.ServerType
 import com.colamusic.core.network.SubsonicConfig
-import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.network.MusicServerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +17,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val repo: SubsonicRepository,
+    private val repo: MusicServerRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginState())
@@ -25,9 +26,18 @@ class LoginViewModel @Inject constructor(
     fun updateUrl(v: String) = _state.update { it.copy(url = v, error = null) }
     fun updateUser(v: String) = _state.update { it.copy(user = v, error = null) }
     fun updatePassword(v: String) = _state.update { it.copy(password = v, error = null) }
+    fun updateServerType(t: ServerType) = _state.update { it.copy(serverType = t, error = null) }
 
     fun submit(onSuccess: () -> Unit) {
         val s = _state.value
+        if (!s.serverType.supported) {
+            _state.update {
+                it.copy(
+                    error = "${s.serverType.displayName} 支持将在 v${s.serverType.comingInVersion} 上线",
+                )
+            }
+            return
+        }
         if (s.url.isBlank() || s.user.isBlank() || s.password.isBlank()) {
             _state.update { it.copy(error = "请填写服务器、用户名、密码") }
             return
@@ -55,6 +65,7 @@ class LoginViewModel @Inject constructor(
 }
 
 data class LoginState(
+    val serverType: ServerType = ServerType.Subsonic,
     val url: String = "",
     val user: String = "",
     val password: String = "",

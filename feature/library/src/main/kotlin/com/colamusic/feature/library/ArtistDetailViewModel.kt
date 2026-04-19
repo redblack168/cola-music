@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.colamusic.core.common.Outcome
 import com.colamusic.core.model.Album
-import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.network.MusicServerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ArtistDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repo: SubsonicRepository,
+    private val repo: MusicServerRepository,
 ) : ViewModel() {
 
     private val artistId: String = checkNotNull(savedStateHandle["artistId"]) {

@@ -22,17 +22,17 @@ import javax.inject.Singleton
 class SubsonicRepository @Inject constructor(
     private val api: SubsonicApi,
     private val sessionStore: SessionStore,
-) {
-    val currentConfig: SubsonicConfig? get() = sessionStore.current.value
+) : MusicServerRepository {
+    override val currentConfig: SubsonicConfig? get() = sessionStore.current.value
 
-    suspend fun ping(): Outcome<Boolean> = outcome {
+    override suspend fun ping(): Outcome<Boolean> = outcome {
         val resp = api.ping().response
         if (resp.status != "ok") error(resp.error?.message ?: "Ping failed: ${resp.status}")
         true
     }
 
     /** Tries a login with the supplied config. On success, persists it. */
-    suspend fun login(config: SubsonicConfig): Outcome<SessionProbe> = outcome {
+    override suspend fun login(config: SubsonicConfig): Outcome<SessionProbe> = outcome {
         sessionStore.save(config)
         val ping = api.ping().response
         if (ping.status != "ok") {
@@ -49,24 +49,24 @@ class SubsonicRepository @Inject constructor(
         ).also { Logx.i("net", "Logged in: $it") }
     }
 
-    fun logout() = sessionStore.clear()
+    override fun logout() = sessionStore.clear()
 
-    suspend fun newest(size: Int = 50, offset: Int = 0): Outcome<List<Album>> = outcome {
+    override suspend fun newest(size: Int, offset: Int): Outcome<List<Album>> = outcome {
         api.getAlbumList2("newest", size = size, offset = offset).response
             .albumList2?.album.orEmpty().map { it.toDomain() }
     }
 
-    suspend fun recent(size: Int = 50, offset: Int = 0): Outcome<List<Album>> = outcome {
+    override suspend fun recent(size: Int, offset: Int): Outcome<List<Album>> = outcome {
         api.getAlbumList2("recent", size = size, offset = offset).response
             .albumList2?.album.orEmpty().map { it.toDomain() }
     }
 
-    suspend fun frequent(size: Int = 50, offset: Int = 0): Outcome<List<Album>> = outcome {
+    override suspend fun frequent(size: Int, offset: Int): Outcome<List<Album>> = outcome {
         api.getAlbumList2("frequent", size = size, offset = offset).response
             .albumList2?.album.orEmpty().map { it.toDomain() }
     }
 
-    suspend fun starred(): Outcome<SearchResult> = outcome {
+    override suspend fun starred(): Outcome<SearchResult> = outcome {
         val s = api.getStarred2().response.starred2
         SearchResult(
             artists = s?.artist.orEmpty().map { it.toDomain() },
@@ -75,33 +75,33 @@ class SubsonicRepository @Inject constructor(
         )
     }
 
-    suspend fun allAlbumsByName(size: Int = 100, offset: Int = 0): Outcome<List<Album>> = outcome {
+    override suspend fun allAlbumsByName(size: Int, offset: Int): Outcome<List<Album>> = outcome {
         api.getAlbumList2("alphabeticalByName", size = size, offset = offset).response
             .albumList2?.album.orEmpty().map { it.toDomain() }
     }
 
-    suspend fun artists(): Outcome<List<Artist>> = outcome {
+    override suspend fun artists(): Outcome<List<Artist>> = outcome {
         api.getArtists().response.artists?.index.orEmpty()
             .flatMap { it.artist }
             .map { it.toDomain() }
     }
 
-    suspend fun artistAlbums(artistId: String): Outcome<List<Album>> = outcome {
+    override suspend fun artistAlbums(artistId: String): Outcome<List<Album>> = outcome {
         api.getArtist(artistId).response.artist?.album.orEmpty().map { it.toDomain() }
     }
 
-    suspend fun albumSongs(albumId: String): Outcome<AlbumWithSongs> = outcome {
+    override suspend fun albumSongs(albumId: String): Outcome<AlbumWithSongs> = outcome {
         val detail = api.getAlbum(albumId).response.album
             ?: error("Album $albumId not found")
         detail.toDomain()
     }
 
-    suspend fun randomSongs(size: Int = 100): Outcome<List<Song>> = outcome {
+    override suspend fun randomSongs(size: Int): Outcome<List<Song>> = outcome {
         api.getRandomSongs(size = size).response
             .randomSongs?.song.orEmpty().map { it.toDomain() }
     }
 
-    suspend fun search(query: String): Outcome<SearchResult> = outcome {
+    override suspend fun search(query: String): Outcome<SearchResult> = outcome {
         val s = api.search3(query).response.searchResult3 ?: Search3Body()
         SearchResult(
             artists = s.artist.map { it.toDomain() },
@@ -110,28 +110,28 @@ class SubsonicRepository @Inject constructor(
         )
     }
 
-    suspend fun playlists(): Outcome<List<Playlist>> = outcome {
+    override suspend fun playlists(): Outcome<List<Playlist>> = outcome {
         api.getPlaylists().response.playlists?.playlist.orEmpty().map { it.toDomain() }
     }
 
-    suspend fun playlist(id: String): Outcome<PlaylistWithSongs> = outcome {
+    override suspend fun playlist(id: String): Outcome<PlaylistWithSongs> = outcome {
         api.getPlaylist(id).response.playlist?.toDomain()
             ?: error("Playlist $id not found")
     }
 
-    suspend fun star(songId: String? = null, albumId: String? = null, artistId: String? = null): Outcome<Unit> = outcome {
+    override suspend fun star(songId: String?, albumId: String?, artistId: String?): Outcome<Unit> = outcome {
         api.star(songId, albumId, artistId).response.let {
             if (it.status != "ok") error(it.error?.message ?: "Star failed")
         }
     }
 
-    suspend fun unstar(songId: String? = null, albumId: String? = null, artistId: String? = null): Outcome<Unit> = outcome {
+    override suspend fun unstar(songId: String?, albumId: String?, artistId: String?): Outcome<Unit> = outcome {
         api.unstar(songId, albumId, artistId).response.let {
             if (it.status != "ok") error(it.error?.message ?: "Unstar failed")
         }
     }
 
-    suspend fun scrobble(songId: String) = outcome {
+    override suspend fun scrobble(songId: String): Outcome<Unit> = outcome {
         api.scrobble(songId).response.let {
             if (it.status != "ok") Logx.w("scrobble", it.error?.message ?: "failed")
         }

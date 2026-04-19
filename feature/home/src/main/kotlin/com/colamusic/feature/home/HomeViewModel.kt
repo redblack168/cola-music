@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.colamusic.core.common.Outcome
 import com.colamusic.core.model.Album
-import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.network.MusicServerRepository
 import com.colamusic.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repo: SubsonicRepository,
+    private val repo: MusicServerRepository,
     private val controller: PlayerController,
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeState())

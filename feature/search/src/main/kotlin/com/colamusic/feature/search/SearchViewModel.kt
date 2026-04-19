@@ -9,7 +9,7 @@ import com.colamusic.core.database.search.FtsQuery
 import com.colamusic.core.lyrics.normalize.TextNormalizer
 import com.colamusic.core.model.Album
 import com.colamusic.core.model.SearchResult
-import com.colamusic.core.network.SubsonicRepository
+import com.colamusic.core.network.MusicServerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -28,7 +28,7 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repo: SubsonicRepository,
+    private val repo: MusicServerRepository,
     private val normalizer: TextNormalizer,
     private val ftsDao: AlbumSearchDao,
     private val history: SearchHistoryStore,
