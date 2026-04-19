@@ -9,6 +9,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.colamusic.core.common.Logx
 import com.colamusic.core.download.DownloadRepository
+import com.colamusic.core.lyrics.LyricsRepository
+import com.colamusic.core.lyrics.LyricsRequest
 import com.colamusic.core.model.QualityPolicy
 import com.colamusic.core.model.Song
 import com.colamusic.core.model.StreamInfo
@@ -41,6 +43,7 @@ class PlayerController @Inject constructor(
     private val streamPolicy: StreamPolicy,
     private val preferences: PlayerPreferences,
     private val downloads: DownloadRepository,
+    private val lyricsRepo: LyricsRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val controllerFlow = MutableStateFlow<MediaController?>(null)
@@ -100,6 +103,7 @@ class PlayerController @Inject constructor(
     }
 
     fun play(song: Song) = scope.launch {
+        prefetchMetadata(song)
         try {
             val policy = preferences.policy.first()
             val allow = preferences.allowMobileOriginal.first()
@@ -129,6 +133,7 @@ class PlayerController @Inject constructor(
 
     fun playQueue(songs: List<Song>, startIndex: Int = 0) = scope.launch {
         if (songs.isEmpty()) return@launch
+        songs.getOrNull(startIndex)?.let { prefetchMetadata(it) }
         try {
             val policy = preferences.policy.first()
             val allow = preferences.allowMobileOriginal.first()
@@ -162,6 +167,39 @@ class PlayerController @Inject constructor(
     fun seekTo(ms: Long) { controllerFlow.value?.seekTo(ms) }
     fun next() { controllerFlow.value?.seekToNextMediaItem() }
     fun previous() { controllerFlow.value?.seekToPreviousMediaItem() }
+
+    /**
+     * Kicks off a best-effort background fetch of the song's lyrics (via the
+     * full provider chain, cached to Room + filesDir/lyrics/). Lyrics screen
+     * and notification will see the cached copy next time without a round-trip.
+     *
+     * The metadata (title/artist/album/track/disc/duration/bitRate/sampleRate/
+     * bitDepth/suffix/coverArt) is already part of the Song object we received
+     * from the library browse, so there's nothing additional to persist there —
+     * the existing Room caching happens on album load.
+     *
+     * Note on "store back to the server": Navidrome / Subsonic does not expose
+     * write endpoints for track tags or lyrics — only favorites, ratings,
+     * playlists, shares. Lyrics therefore always cache client-side.
+     */
+    private fun prefetchMetadata(song: Song) {
+        scope.launch {
+            runCatching {
+                lyricsRepo.loadFor(
+                    LyricsRequest(
+                        songId = song.id,
+                        title = song.title,
+                        artist = song.artist,
+                        album = song.album,
+                        durationSec = song.duration,
+                        track = song.track,
+                        disc = song.disc,
+                    ),
+                    forceRefresh = false,
+                )
+            }.onFailure { Logx.w("player", "lyrics prefetch for ${song.id} failed: ${it.message}") }
+        }
+    }
 
     /** Offline-first — file URI if downloaded, else delegate to [StreamPolicy]. */
     private suspend fun resolveStream(song: Song, policy: QualityPolicy, allow: Boolean): StreamInfo {

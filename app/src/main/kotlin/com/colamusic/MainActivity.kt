@@ -11,12 +11,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
+import com.colamusic.ui.ProvideAdaptiveLayout
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -26,19 +29,27 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { /* granted or not — foreground playback still works, just no visible notification */ }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         maybeRequestNotificationPermission()
-        setContent { ColaTheme { ColaAppContent() } }
+        setContent {
+            val sizeClass = calculateWindowSizeClass(this)
+            ColaTheme {
+                ProvideAdaptiveLayout(widthSizeClass = sizeClass.widthSizeClass) {
+                    ColaAppContent()
+                }
+            }
+        }
     }
 
     /**
      * Android 13+ requires POST_NOTIFICATIONS to be granted before the
      * MediaLibraryService can show its foreground notification. Missing that
-     * permission is the single most common reason the OS kills a media
-     * foreground service with ForegroundServiceDidNotStartInTimeException.
+     * permission is a common reason the OS kills a media foreground service
+     * with ForegroundServiceDidNotStartInTimeException.
      */
     private fun maybeRequestNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return

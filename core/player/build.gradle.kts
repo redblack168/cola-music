@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:network"))
     implementation(project(":core:download"))
+    implementation(project(":core:lyrics"))
 
     implementation(libs.bundles.media3)
     implementation(libs.okhttp)
