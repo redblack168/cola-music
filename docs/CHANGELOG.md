@@ -2,6 +2,33 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.6] — 2026-04-20
+
+### Fixed
+- **In-app updater installed a second, side-by-side app instead of
+  updating.** v0.4.5's GitHub release shipped both `release.apk` and
+  `debug.apk`; the updater took the first `.apk` it saw, which sorted
+  alphabetically as `debug.apk`. Debug builds carry
+  `applicationIdSuffix=".debug"` (so `com.colamusic.debug`) and
+  therefore install as a separate package next to the release
+  (`com.colamusic`) instead of upgrading it. v0.4.6's updater
+  explicitly prefers an asset whose name contains "release" and falls
+  back to a non-debug `.apk` only if none exists. Going forward,
+  GitHub releases publish the release APK only — debug APKs stay on
+  the dev's machine.
+
+### Migration
+
+If you installed v0.4.5 via the in-app updater and now see two "可乐
+音乐" apps on your phone, uninstall the one labelled with the debug
+suffix; the release-build copy will keep working and v0.4.6+ will
+update it cleanly via the same Settings → 检查更新 flow.
+
+### Internal
+- versionCode 33, versionName 0.4.6.
+
+
+
 ## [0.4.5] — 2026-04-20
 
 ### Added

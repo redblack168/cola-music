@@ -58,18 +58,37 @@ class UpdateChecker @Inject constructor(
         val tag = root.optString("tag_name").orEmpty()
         val notes = root.optString("body").orEmpty()
         val htmlUrl = root.optString("html_url").orEmpty()
+        // Prefer the *release* APK. Debug builds carry an applicationIdSuffix
+        // of ".debug", so installing the debug APK on top of an installed
+        // release build creates a SECOND, side-by-side app instead of
+        // updating — which is exactly what bit a v0.4.5 user. Pick the
+        // release-named asset when it exists; only fall back to any .apk if
+        // no release-named one is present.
         val assets = root.optJSONArray("assets")
         var apkUrl: String? = null
         var apkName: String? = null
+        var fallbackUrl: String? = null
+        var fallbackName: String? = null
         if (assets != null) {
             for (i in 0 until assets.length()) {
                 val a = assets.getJSONObject(i)
                 val n = a.optString("name")
-                if (n.endsWith(".apk", ignoreCase = true)) {
+                if (!n.endsWith(".apk", ignoreCase = true)) continue
+                val isDebug = n.contains("debug", ignoreCase = true)
+                val isRelease = n.contains("release", ignoreCase = true)
+                if (isRelease && !isDebug) {
                     apkUrl = a.optString("browser_download_url")
                     apkName = n
                     break
                 }
+                if (!isDebug && fallbackUrl == null) {
+                    fallbackUrl = a.optString("browser_download_url")
+                    fallbackName = n
+                }
+            }
+            if (apkUrl == null) {
+                apkUrl = fallbackUrl
+                apkName = fallbackName
             }
         }
 
