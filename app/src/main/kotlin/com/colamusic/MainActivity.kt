@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.rememberNavController
 import com.colamusic.core.player.MusicService
+import com.colamusic.core.player.PlayerController
 import com.colamusic.ui.ColaPalette
 import com.colamusic.ui.ColaTheme
 import com.colamusic.ui.ProvideAdaptiveLayout
@@ -35,6 +36,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var themePrefs: ThemePreferences
+    @Inject lateinit var playerController: PlayerController
 
     private val requestNotificationPerm = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -57,6 +59,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         maybeRequestNotificationPermission()
         consumeOpenNowPlayingExtra(intent)
+        // Eagerly bind to MusicService's MediaSession so that if the
+        // process was killed while playback continued (foreground service
+        // notification kept alive), reopening the app — including via the
+        // "tap notification" dynamic-island flow — finds an already-wired
+        // controller and the UI immediately shows the live song / state.
+        // PlayerController.connect() is idempotent.
+        playerController.connect()
         setContent {
             val sizeClass = calculateWindowSizeClass(this)
             val palette by themePrefs.palette.collectAsState(initial = ColaPalette.ColaRed)

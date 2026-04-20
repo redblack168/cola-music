@@ -23,7 +23,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -75,67 +77,99 @@ class MusicService : MediaLibraryService() {
 
     /**
      * Pushes the currently-active synced-lyric line into the playing
-     * MediaItem's **artist** field, plus subtitle/description. The artist
-     * field is the one that Samsung's One UI dynamic island and the system
-     * lockscreen actually display — subtitle/description alone don't reach
-     * the dynamic island tile.
+     * MediaItem's **artist** field (plus subtitle/description). Samsung's
+     * One UI dynamic island and the system lockscreen render the artist
+     * field — subtitle/description alone don't reach the dynamic island.
      *
-     * The original artist is cached in [originalArtist] keyed by mediaId
-     * and restored on track change (see [restoreOriginalArtist]) and when
-     * the setting flips off.
+     * Battery-aware design (v0.4.7):
+     *   1. Outer `collectLatest` on the preference flow — when the setting
+     *      is OFF the inner ticker doesn't run at all (no wake-ups, no
+     *      delay loop, no metadata reads).
+     *   2. Inner loop only runs while playback is active and lyrics are
+     *      synced; otherwise sleeps a long idle delay until those change.
+     *   3. Each iteration sleeps until the **next lyric line's timestamp**
+     *      (clamped 150ms..5000ms) instead of polling on a fixed cadence.
+     *      For typical 4–8s gaps between lines this drops wake-ups by an
+     *      order of magnitude vs the previous 400ms tick.
      *
-     * Gated by [LyricNotificationPreferences]; off by default.
-     * Uses [androidx.media3.common.Player.replaceMediaItem] on a metadata-
-     * only diff so ExoPlayer does NOT rebuffer.
+     * Original artist is cached in [originalArtist] keyed by mediaId so we
+     * can restore it on track change or when the setting flips off.
      */
     private fun startLyricTicker() {
         lyricTickerJob?.cancel()
         lyricTickerJob = serviceScope.launch {
-            while (isActive) {
-                val enabled = runCatching { lyricNotificationPrefs.enabledNow() }.getOrDefault(false)
-                val p = player
-                val ly = lyricsRepo.current.value
-
+            lyricNotificationPrefs.enabled.collectLatest { enabled ->
                 if (!enabled) {
-                    // Setting just flipped off — restore the real artist on
-                    // the current item if we'd shadowed it.
                     if (lastLyricLine != null) {
-                        restoreOriginalArtistOnCurrent(p)
+                        restoreOriginalArtistOnCurrent(player)
                         lastLyricLine = null
                     }
-                    delay(750L)
-                    continue
+                    return@collectLatest // suspend until the flow next emits
                 }
-
-                if (p != null && ly != null && ly.isSynced && !ly.isEmpty) {
-                    val pos = runCatching { p.currentPosition }.getOrDefault(0L)
-                    val line = activeLineAt(ly, pos)
-                    if (line != null && line != lastLyricLine) {
-                        lastLyricLine = line
-                        val idx = runCatching { p.currentMediaItemIndex }.getOrDefault(-1)
-                        val item = runCatching { p.currentMediaItem }.getOrNull()
-                        if (idx >= 0 && item != null) {
-                            // Cache original artist once per song so we can
-                            // restore on track change.
-                            val songId = item.mediaId
-                            if (!originalArtist.containsKey(songId)) {
-                                originalArtist[songId] = item.mediaMetadata.artist?.toString()
-                            }
-                            val updated = item.buildUpon()
-                                .setMediaMetadata(
-                                    item.mediaMetadata.buildUpon()
-                                        .setArtist(line)
-                                        .setSubtitle(line)
-                                        .setDescription(line)
-                                        .build()
-                                ).build()
-                            runCatching { p.replaceMediaItem(idx, updated) }
-                        }
-                    }
-                }
-                delay(400L)
+                tickLyricUpdates()
             }
         }
+    }
+
+    /** Runs only while the user has live-lyrics enabled. */
+    private suspend fun tickLyricUpdates() {
+        while (kotlinx.coroutines.coroutineScope { isActive }) {
+            val p = player
+            val ly = lyricsRepo.current.value
+
+            // Skip work entirely when the player isn't even running. We
+            // use a long idle delay so the service mostly sleeps; the
+            // outer collectLatest will tear us down anyway when the
+            // setting flips off.
+            if (p == null || !p.isPlaying || ly == null || !ly.isSynced || ly.isEmpty) {
+                delay(2000L)
+                continue
+            }
+
+            val pos = runCatching { p.currentPosition }.getOrDefault(0L)
+            val (line, nextDelay) = activeLineAndDelay(ly, pos)
+
+            if (line != null && line != lastLyricLine) {
+                lastLyricLine = line
+                val idx = runCatching { p.currentMediaItemIndex }.getOrDefault(-1)
+                val item = runCatching { p.currentMediaItem }.getOrNull()
+                if (idx >= 0 && item != null) {
+                    val songId = item.mediaId
+                    if (!originalArtist.containsKey(songId)) {
+                        // Pull the canonical artist from extras so we restore
+                        // the *real* one (not a previously-shadowed value).
+                        originalArtist[songId] =
+                            item.mediaMetadata.extras
+                                ?.getString(com.colamusic.core.player.PlayerController.META_REAL_ARTIST)
+                                ?: item.mediaMetadata.artist?.toString()
+                    }
+                    val updated = item.buildUpon()
+                        .setMediaMetadata(
+                            item.mediaMetadata.buildUpon()
+                                .setArtist(line)
+                                .setSubtitle(line)
+                                .setDescription(line)
+                                .build()
+                        ).build()
+                    runCatching { p.replaceMediaItem(idx, updated) }
+                }
+            }
+            delay(nextDelay)
+        }
+    }
+
+    /** Returns (active line, ms until the next line should fire).
+     *  When already past the last line, returns the line + a long idle delay. */
+    private fun activeLineAndDelay(ly: com.colamusic.core.model.Lyrics, positionMs: Long): Pair<String?, Long> {
+        var current: String? = null
+        var nextTime: Long? = null
+        for (line in ly.lines) {
+            val t = line.timeMs ?: continue
+            if (t <= positionMs) current = line.text
+            else { nextTime = t; break }
+        }
+        val delay = nextTime?.let { (it - positionMs).coerceIn(150L, 5000L) } ?: 5000L
+        return current to delay
     }
 
     private fun restoreOriginalArtistOnCurrent(p: androidx.media3.exoplayer.ExoPlayer?) {
@@ -155,14 +189,6 @@ class MusicService : MediaLibraryService() {
         runCatching { player.replaceMediaItem(idx, updated) }
     }
 
-    private fun activeLineAt(ly: com.colamusic.core.model.Lyrics, positionMs: Long): String? {
-        var current: String? = null
-        for (line in ly.lines) {
-            val t = line.timeMs ?: continue
-            if (t <= positionMs) current = line.text else break
-        }
-        return current
-    }
 
     private val transitionListener = object : androidx.media3.common.Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {

@@ -51,16 +51,19 @@ class SubsonicAuthInterceptorTest {
         assertEquals("expected 5 distinct salts", 5, salts.size)
     }
 
-    @Test fun `missing config throws`() {
+    @Test fun `missing config returns synthetic 401 instead of throwing`() {
+        // v0.3.x: throwing here propagated up OkHttp's async dispatcher and
+        // killed the process whenever a Subsonic-path call (e.g. the
+        // NavidromeLyricsProvider) ran while logged into Plex/Emby/Jellyfin.
+        // Now we synthesize a 401 so callers can handle it like any other
+        // unauthenticated response.
         val ic = SubsonicAuthInterceptor { null }
         val chain = FakeChain(Request.Builder().url("http://x/rest/ping.view").build())
-        try {
-            ic.intercept(chain)
-        } catch (e: IllegalStateException) {
-            assertTrue(e.message!!.contains("login"))
-            return
-        }
-        throw AssertionError("expected IllegalStateException")
+        val response = ic.intercept(chain)
+        assertEquals(401, response.code)
+        // Chain.proceed must NOT have been called — we short-circuited.
+        assertNotNull(response.body)
+        assertEquals(null, chain.fired)
     }
 
     @Test fun `passes third-party requests through untouched`() {

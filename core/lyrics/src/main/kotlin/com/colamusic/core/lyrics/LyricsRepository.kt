@@ -25,6 +25,32 @@ class LyricsRepository @Inject constructor(
 
     private val dir: File by lazy { File(context.filesDir, "lyrics").apply { mkdirs() } }
 
+    /** songId of the track the player considers active. Resolver completions
+     *  for any other songId are persisted to disk but NOT published to
+     *  [_current], so a slow lookup for song A can't overwrite the live
+     *  lyrics flow after the user has moved on to song B. Set by
+     *  [setActiveSong] from PlayerController on every track change. */
+    @Volatile private var activeSongId: String? = null
+
+    /** Tells the repo which song the player is on right now. Lookups whose
+     *  songId doesn't match this at completion time are silently dropped
+     *  (still cached on disk, just not published). */
+    fun setActiveSong(songId: String?) {
+        activeSongId = songId
+        // Drop the visible flow so the UI doesn't briefly show the previous
+        // song's lyrics during the transition.
+        if (_current.value?.songId != songId) _current.value = null
+    }
+
+    private fun publishIfStillActive(lyrics: Lyrics?, requestedSongId: String) {
+        val active = activeSongId ?: requestedSongId
+        if (requestedSongId != active) {
+            Logx.d("lyr", "drop stale result for $requestedSongId (active=$active)")
+            return
+        }
+        _current.value = lyrics
+    }
+
     suspend fun loadFor(request: LyricsRequest, forceRefresh: Boolean = false): Lyrics? {
         val now = System.currentTimeMillis()
 
@@ -33,7 +59,7 @@ class LyricsRepository @Inject constructor(
                 if (cached.expiresAtMs > now && cached.bodyPath != null) {
                     val parsed = readCached(cached)
                     if (parsed != null) {
-                        _current.value = parsed
+                        publishIfStillActive(parsed, request.songId)
                         return parsed
                     }
                 }
@@ -43,7 +69,7 @@ class LyricsRepository @Inject constructor(
         val fresh = resolver.resolve(request)
         if (fresh != null) {
             persist(fresh)
-            _current.value = fresh
+            publishIfStillActive(fresh, request.songId)
         } else {
             dao.upsert(
                 LyricCacheEntity(
@@ -57,7 +83,7 @@ class LyricsRepository @Inject constructor(
                     note = "no match above threshold",
                 )
             )
-            _current.value = null
+            publishIfStillActive(null, request.songId)
         }
         return fresh
     }
@@ -100,6 +126,8 @@ class LyricsRepository @Inject constructor(
         )
         dao.delete(songId)
         persist(lyrics)
+        // User explicitly picked this — show it immediately even if the
+        // active song id has technically already moved on.
         _current.value = lyrics
     }
 

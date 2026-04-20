@@ -2,6 +2,65 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.7] — 2026-04-20
+
+### Stability + battery — Codex adversarial review fallout
+
+- **[high] Lyrics race fixed.** `LyricsRepository` published every
+  resolver completion into one global `_current` flow. A slow lookup
+  for song A could finish after the user advanced to song B and
+  overwrite the live lyrics flow with the wrong text. v0.4.7 tracks
+  the active song id (`setActiveSong`, called from
+  `PlayerController.prefetchMetadata`) and silently drops any
+  resolver result whose songId no longer matches when it completes.
+  Disk cache is still written; only the visible flow is gated.
+- **[high] Process-death recovery.** `PlayerController.connect()`
+  is now called from `MainActivity.onCreate()`. v0.4.6 only bound to
+  the `MediaController` lazily inside `play()` / `playQueue()`, so
+  if the OS killed the process while playback continued (the
+  foreground service notification kept us alive), tapping the
+  notification rebuilt the UI without any wired controller —
+  transport buttons did nothing, no current song was visible.
+  Connect is idempotent.
+- **[medium] Canonical artist no longer corruptible.** v0.4.5 began
+  shadowing `MediaMetadata.artist` with the live lyric line so
+  Samsung's One UI dynamic island would render it. The downside:
+  `PlayerController.toSongOrNull()` reconstructs the `Song` object
+  from that same field, so on every track transition the recently-
+  played log got the previous song's last lyric line stored as the
+  artist name, and album/artist navigation broke. v0.4.7 stashes the
+  real artist in a new `META_REAL_ARTIST` extra and `toSongOrNull`
+  prefers the extra over the visible (possibly shadowed) field.
+- **[medium] Battery: lyric ticker is now event-driven.** The v0.4.5
+  ticker woke every 400ms while live lyrics were enabled (and every
+  750ms even when disabled, just to re-check the preference). v0.4.7
+  uses `collectLatest` on the preference flow — when off the ticker
+  doesn't run at all — and inside the on-state runs an inner loop
+  that sleeps until the **next lyric line's timestamp** (clamped to
+  150ms..5s) instead of polling on a fixed cadence. For typical
+  4–8s gaps between lines this drops wake-ups by an order of
+  magnitude. Also gated on `isPlaying`: paused playback no longer
+  ticks at all.
+
+### Internal
+- New `META_REAL_ARTIST` extra on every Media3 `MediaItem`.
+- `LyricsRepository.setActiveSong(songId)` is the new authoritative
+  signal for "which track's lyrics matter right now".
+- `MusicService.tickLyricUpdates` extracted from `startLyricTicker`
+  for clarity (the outer fun is now just the preference observer).
+- `SubsonicAuthInterceptorTest.missing config` rewritten to assert
+  the synthetic-401 contract that ships since v0.3.x — it was still
+  expecting the old throwing behavior and falsely failing.
+- versionCode 34, versionName 0.4.7.
+
+### Known issues (Codex flagged, deferred)
+- `AlbumSyncWorker` returns `Result.success()` on mid-run page
+  failures and never prunes albums that disappeared upstream. Will
+  bite very large libraries with phantom rows. Not user-blocking
+  yet; tracked separately for a v0.5 sync-engine pass.
+
+
+
 ## [0.4.6] — 2026-04-20
 
 ### Fixed

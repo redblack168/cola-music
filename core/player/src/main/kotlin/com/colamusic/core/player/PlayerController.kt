@@ -336,6 +336,11 @@ class PlayerController @Inject constructor(
      * playlists, shares. Lyrics therefore always cache client-side.
      */
     private fun prefetchMetadata(song: Song) {
+        // Tell the lyrics repo which song is now "active" — any in-flight
+        // resolver work for a previous song will silently drop its result
+        // when it completes (race fix; without this, a slow lookup for the
+        // previous track can overwrite the new track's lyrics flow).
+        lyricsRepo.setActiveSong(song.id)
         scope.launch {
             runCatching {
                 lyricsRepo.loadFor(
@@ -465,6 +470,15 @@ class PlayerController @Inject constructor(
                         putString(META_ALBUM_ID, albumId)
                         putString(META_ARTIST_ID, artistId)
                         putBoolean(META_STARRED, starred)
+                        // Canonical artist string. We stash it here because
+                        // MusicService temporarily shadows mediaMetadata.artist
+                        // with the live lyric line (so the dynamic island /
+                        // lockscreen renders it). Without this extra, the
+                        // round-trip via toSongOrNull would corrupt the
+                        // current Song's artist field — and downstream that
+                        // poisons the recently-played log, the album/artist
+                        // navigation, and lyric rematch queries.
+                        putString(META_REAL_ARTIST, artist)
                     })
                     .build()
             )
@@ -477,7 +491,9 @@ class PlayerController @Inject constructor(
             title = mediaMetadata.title?.toString() ?: "",
             album = mediaMetadata.albumTitle?.toString(),
             albumId = e.getString(META_ALBUM_ID),
-            artist = mediaMetadata.artist?.toString(),
+            // Prefer the extras-cached real artist; the visible artist field
+            // may have been shadowed with a live lyric line by MusicService.
+            artist = e.getString(META_REAL_ARTIST) ?: mediaMetadata.artist?.toString(),
             artistId = e.getString(META_ARTIST_ID),
             track = mediaMetadata.trackNumber,
             disc = mediaMetadata.discNumber,
@@ -502,5 +518,6 @@ class PlayerController @Inject constructor(
         private const val META_ALBUM_ID = "cola.albumId"
         private const val META_ARTIST_ID = "cola.artistId"
         private const val META_STARRED = "cola.starred"
+        const val META_REAL_ARTIST = "cola.realArtist"
     }
 }
