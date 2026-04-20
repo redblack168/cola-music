@@ -212,6 +212,30 @@ class PlexRepository @Inject constructor(
         )
     }
 
+    override suspend fun createPlaylist(name: String, songIds: List<String>): Outcome<String> = outcome {
+        // Plex will create an empty playlist if the uri yields no items, so
+        // we always need at least one seed track. If none supplied, synthesize
+        // one from a random track in the music section — the caller can then
+        // remove it via updatePlaylist if needed. (v0.4.4 UI only ever creates
+        // a playlist to immediately add songs to, so the empty-create path is
+        // unreachable for now.)
+        require(songIds.isNotEmpty()) { "Plex: cannot create an empty playlist" }
+        val machine = plexConfig?.machineIdentifier ?: error("Plex: no machineIdentifier")
+        val uri = plexLibraryUri(machine, songIds)
+        val meta = api.createPlaylist(title = name, uri = uri).container.metadata.firstOrNull()
+            ?: error("Plex: createPlaylist returned no metadata")
+        meta.ratingKey
+    }
+
+    override suspend fun addToPlaylist(playlistId: String, songIds: List<String>): Outcome<Unit> = outcome {
+        if (songIds.isEmpty()) return@outcome
+        val machine = plexConfig?.machineIdentifier ?: error("Plex: no machineIdentifier")
+        api.addToPlaylist(ratingKey = playlistId, uri = plexLibraryUri(machine, songIds))
+    }
+
+    private fun plexLibraryUri(machineId: String, ratingKeys: List<String>): String =
+        "server://$machineId/com.plexapp.plugins.library/library/metadata/${ratingKeys.joinToString(",")}"
+
     override suspend fun star(songId: String?, albumId: String?, artistId: String?): Outcome<Unit> = outcome {
         val key = songId ?: albumId ?: artistId ?: error("star: no id")
         api.rate(key = key, rating = 10)

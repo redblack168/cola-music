@@ -8,6 +8,8 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.colamusic.core.common.Logx
+import com.colamusic.core.database.dao.RecentSongDao
+import com.colamusic.core.database.entity.RecentSongEntity
 import com.colamusic.core.download.DownloadRepository
 import com.colamusic.core.lyrics.LyricsRepository
 import com.colamusic.core.lyrics.LyricsRequest
@@ -47,6 +49,7 @@ class PlayerController @Inject constructor(
     private val preferences: PlayerPreferences,
     private val downloads: DownloadRepository,
     private val lyricsRepo: LyricsRepository,
+    private val recentSongDao: RecentSongDao,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val controllerFlow = MutableStateFlow<MediaController?>(null)
@@ -69,6 +72,22 @@ class PlayerController @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _shuffle = MutableStateFlow(false)
+    val shuffleOn: StateFlow<Boolean> = _shuffle.asStateFlow()
+
+    /** 0 = off, 1 = repeat all, 2 = repeat one. Mirrors Media3 Player.REPEAT_MODE_*. */
+    private val _repeat = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    val repeatMode: StateFlow<Int> = _repeat.asStateFlow()
+
+    /** Queue snapshot, rebuilt on timeline change. */
+    private val _queue = MutableStateFlow<List<Song>>(emptyList())
+    val queue: StateFlow<List<Song>> = _queue.asStateFlow()
+
+    /** Epoch-millis when the sleep timer will pause, or null if none scheduled. */
+    private val _sleepDeadline = MutableStateFlow<Long?>(null)
+    val sleepDeadline: StateFlow<Long?> = _sleepDeadline.asStateFlow()
+    private var sleepJob: Job? = null
 
     fun connect() {
         if (controllerFlow.value != null) return
@@ -130,8 +149,28 @@ class PlayerController @Inject constructor(
         return withTimeoutOrNull(5_000) { controllerFlow.filterNotNull().first() }
     }
 
+    private fun logRecent(song: Song) {
+        scope.launch {
+            runCatching {
+                recentSongDao.upsert(
+                    RecentSongEntity(
+                        songId = song.id,
+                        title = song.title,
+                        artist = song.artist,
+                        album = song.album,
+                        albumId = song.albumId,
+                        coverArt = song.coverArt,
+                        duration = song.duration,
+                        playedAtMs = System.currentTimeMillis(),
+                    )
+                )
+            }.onFailure { Logx.w("player", "recent log failed: ${it.message}") }
+        }
+    }
+
     fun play(song: Song) = scope.launch {
         prefetchMetadata(song)
+        logRecent(song)
         try {
             val policy = preferences.policy.first()
             val allow = preferences.allowMobileOriginal.first()
@@ -167,7 +206,10 @@ class PlayerController @Inject constructor(
 
     fun playQueue(songs: List<Song>, startIndex: Int = 0) = scope.launch {
         if (songs.isEmpty()) return@launch
-        songs.getOrNull(startIndex)?.let { prefetchMetadata(it) }
+        songs.getOrNull(startIndex)?.let {
+            prefetchMetadata(it)
+            logRecent(it)
+        }
         try {
             val policy = preferences.policy.first()
             val allow = preferences.allowMobileOriginal.first()
@@ -201,6 +243,83 @@ class PlayerController @Inject constructor(
     fun seekTo(ms: Long) { controllerFlow.value?.seekTo(ms) }
     fun next() { controllerFlow.value?.seekToNextMediaItem() }
     fun previous() { controllerFlow.value?.seekToPreviousMediaItem() }
+
+    fun setShuffleEnabled(on: Boolean) {
+        val c = controllerFlow.value ?: return
+        c.shuffleModeEnabled = on
+        _shuffle.value = on
+    }
+
+    fun toggleShuffle() = setShuffleEnabled(!_shuffle.value)
+
+    /** Cycle off → all → one → off. */
+    fun cycleRepeat() {
+        val c = controllerFlow.value ?: return
+        val next = when (_repeat.value) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+        c.repeatMode = next
+        _repeat.value = next
+    }
+
+    fun removeFromQueue(index: Int) {
+        val c = controllerFlow.value ?: return
+        if (index < 0 || index >= c.mediaItemCount) return
+        c.removeMediaItem(index)
+    }
+
+    fun moveInQueue(from: Int, to: Int) {
+        val c = controllerFlow.value ?: return
+        if (from == to) return
+        if (from < 0 || from >= c.mediaItemCount) return
+        if (to < 0 || to >= c.mediaItemCount) return
+        c.moveMediaItem(from, to)
+    }
+
+    fun jumpTo(index: Int) {
+        val c = controllerFlow.value ?: return
+        if (index < 0 || index >= c.mediaItemCount) return
+        c.seekTo(index, 0L)
+        c.playWhenReady = true
+    }
+
+    /** Schedule a pause after [minutes] minutes (or the current song ends if
+     *  [untilEndOfSong]). Pass 0 / null to cancel. */
+    fun setSleepTimer(minutes: Int?) {
+        sleepJob?.cancel()
+        sleepJob = null
+        _sleepDeadline.value = null
+        if (minutes == null || minutes <= 0) return
+        val deadline = System.currentTimeMillis() + minutes * 60_000L
+        _sleepDeadline.value = deadline
+        sleepJob = scope.launch {
+            delay(minutes * 60_000L)
+            runCatching { controllerFlow.value?.pause() }
+            _sleepDeadline.value = null
+            sleepJob = null
+        }
+    }
+
+    fun sleepAtEndOfSong() {
+        sleepJob?.cancel()
+        // We flag via deadline=-1 so the UI knows "end of song" is armed.
+        _sleepDeadline.value = -1L
+        sleepJob = scope.launch {
+            // Wait for next media-item transition (or end), then pause.
+            val c = awaitController() ?: return@launch
+            val listener = object : Player.Listener {
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    c.pause()
+                    c.removeListener(this)
+                    _sleepDeadline.value = null
+                    sleepJob = null
+                }
+            }
+            c.addListener(listener)
+        }
+    }
 
     /**
      * Kicks off a best-effort background fetch of the song's lyrics (via the
@@ -261,6 +380,7 @@ class PlayerController @Inject constructor(
             val song = mediaItem?.toSongOrNull()
             if (song != null) {
                 _currentSong.value = song
+                logRecent(song)
                 // Refresh the stream-kind chip (original vs. transcoded etc.)
                 // AND kick a lyrics prefetch for the new track. Without this,
                 // auto-advance through a queue would never populate lyrics
@@ -276,16 +396,36 @@ class PlayerController @Inject constructor(
         override fun onPlaybackStateChanged(playbackState: Int) {
             controllerFlow.value?.let { pushState(it) }
         }
+        override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+            controllerFlow.value?.let { rebuildQueue(it) }
+        }
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+            _shuffle.value = shuffleModeEnabled
+        }
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            _repeat.value = repeatMode
+        }
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Logx.e("player", "Playback error: ${error.errorCodeName} ${error.message}", error)
             _error.value = "${error.errorCodeName}: ${error.message}"
         }
     }
 
+    private fun rebuildQueue(c: MediaController) {
+        val out = ArrayList<Song>(c.mediaItemCount)
+        for (i in 0 until c.mediaItemCount) {
+            c.getMediaItemAt(i).toSongOrNull()?.let { out += it }
+        }
+        _queue.value = out
+    }
+
     private fun pushState(c: MediaController) {
         _isPlaying.value = c.isPlaying
         _positionMs.value = c.currentPosition
         _durationMs.value = if (c.duration > 0) c.duration else 0L
+        _shuffle.value = c.shuffleModeEnabled
+        _repeat.value = c.repeatMode
+        rebuildQueue(c)
         // Mirror the currently-loaded MediaItem into _currentSong. Without
         // this, after a process death + relaunch the controller reconnects to
         // the running MediaLibraryService but our currentSong stays null —

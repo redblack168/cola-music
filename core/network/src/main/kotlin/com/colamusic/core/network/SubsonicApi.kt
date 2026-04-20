@@ -92,6 +92,25 @@ interface SubsonicApi {
     @GET("rest/getPlaylist.view")
     suspend fun getPlaylist(@Query("id") id: String): SubsonicEnvelope<PlaylistDetailResponse>
 
+    /**
+     * Subsonic supports both flavors:
+     *   - createPlaylist?name=...&songId=a&songId=b  (new playlist)
+     *   - createPlaylist?playlistId=...&songId=...   (replaces existing; we don't use this mode)
+     * Server returns the created playlist in {"playlist": {...}} envelope.
+     */
+    @GET("rest/createPlaylist.view")
+    suspend fun createPlaylist(
+        @Query("name") name: String,
+        @Query("songId") songIds: List<String> = emptyList(),
+    ): SubsonicEnvelope<PlaylistDetailResponse>
+
+    @GET("rest/updatePlaylist.view")
+    suspend fun updatePlaylist(
+        @Query("playlistId") playlistId: String,
+        @Query("songIdToAdd") songIdToAdd: List<String> = emptyList(),
+        @Query("songIndexToRemove") songIndexToRemove: List<Int> = emptyList(),
+    ): SubsonicEnvelope<BaseResponse>
+
     @GET("rest/getLyricsBySongId.view")
     suspend fun getLyricsBySongId(@Query("id") songId: String): SubsonicEnvelope<LyricsListResponse>
 

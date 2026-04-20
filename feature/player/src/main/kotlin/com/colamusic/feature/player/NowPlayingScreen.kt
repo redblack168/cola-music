@@ -38,9 +38,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.AssistChip
@@ -94,7 +101,40 @@ fun NowPlayingScreen(
     val pos by vm.position.collectAsStateWithLifecycle()
     val dur by vm.duration.collectAsStateWithLifecycle()
     val lyrics by vm.lyrics.collectAsStateWithLifecycle()
+    val starred by vm.starred.collectAsStateWithLifecycle()
+    val shuffle by vm.shuffleOn.collectAsStateWithLifecycle()
+    val repeat by vm.repeatMode.collectAsStateWithLifecycle()
+    val queue by vm.queue.collectAsStateWithLifecycle()
+    val sleepDeadline by vm.sleepDeadline.collectAsStateWithLifecycle()
     val picker by vm.picker.collectAsStateWithLifecycle()
+    val playlistsSheet by vm.playlistsSheet.collectAsStateWithLifecycle()
+    var queueOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var sleepOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (queueOpen) {
+        QueueSheet(
+            queue = queue,
+            onDismiss = { queueOpen = false },
+            onRemove = { vm.removeFromQueue(it) },
+            onJump = { vm.jumpTo(it); queueOpen = false },
+        )
+    }
+    if (sleepOpen) {
+        SleepTimerSheet(
+            deadline = sleepDeadline,
+            onDismiss = { sleepOpen = false },
+            onPick = { vm.setSleepMinutes(it); sleepOpen = false },
+            onEndOfSong = { vm.sleepAtEndOfSong(); sleepOpen = false },
+            onCancel = { vm.setSleepMinutes(null); sleepOpen = false },
+        )
+    }
+    if (playlistsSheet.visible) {
+        AddToPlaylistSheet(
+            state = playlistsSheet,
+            onDismiss = { vm.dismissAddToPlaylistSheet() },
+            onPick = { vm.addCurrentSongTo(it) },
+            onCreate = { vm.createPlaylistWithCurrentSong(it) },
+        )
+    }
     if (picker.visible) {
         LyricsPickerSheet(
             state = picker,
@@ -149,6 +189,14 @@ fun NowPlayingScreen(
                 letterSpacing = androidx.compose.ui.unit.TextUnit(1.4f, androidx.compose.ui.unit.TextUnitType.Sp),
             )
             Spacer(Modifier.weight(1f))
+            IconButton(onClick = { vm.toggleStar() }, enabled = song != null) {
+                Icon(
+                    imageVector = if (starred) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (starred) "取消收藏" else "收藏",
+                    tint = if (starred) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             QualityChip(kind, song?.suffix, song?.bitRate)
         }
         Spacer(Modifier.height(12.dp))
@@ -239,7 +287,46 @@ fun NowPlayingScreen(
             Text(formatMs(dur), style = MaterialTheme.typography.bodySmall)
         }
 
-        Spacer(Modifier.height(if (onLyrics) 4.dp else 16.dp))
+        // Secondary action row — shuffle, repeat, queue, add-to-playlist, sleep timer.
+        Spacer(Modifier.height(if (onLyrics) 2.dp else 8.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = { vm.toggleShuffle() }) {
+                Icon(
+                    Icons.Default.Shuffle,
+                    contentDescription = "随机",
+                    tint = if (shuffle) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = { vm.cycleRepeat() }) {
+                Icon(
+                    imageVector = if (repeat == 2) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                    contentDescription = "循环",
+                    tint = if (repeat != 0) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = { queueOpen = true }) {
+                Icon(Icons.Default.Album, contentDescription = "队列", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = { vm.openAddToPlaylistSheet() }, enabled = song != null) {
+                Icon(Icons.Default.PlaylistAdd, contentDescription = "加入歌单", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = { sleepOpen = true }) {
+                Icon(
+                    Icons.Default.Timer,
+                    contentDescription = "睡眠定时",
+                    tint = if (sleepDeadline != null) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(if (onLyrics) 4.dp else 12.dp))
         // Transport controls — sized for context. Lyrics page gets a
         // compact 56 dp button; cover page keeps the bigger 76 dp anchor.
         val playSize = if (onLyrics) 56.dp else 76.dp
@@ -729,6 +816,195 @@ private fun LyricsCandidateRow(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                 maxLines = 3,
             )
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun QueueSheet(
+    queue: List<com.colamusic.core.model.Song>,
+    onDismiss: () -> Unit,
+    onRemove: (Int) -> Unit,
+    onJump: (Int) -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Text(
+                "播放队列 · Queue (${queue.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(vertical = 8.dp),
+            )
+            if (queue.isEmpty()) {
+                Text(
+                    "队列为空。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 24.dp),
+                )
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+                    items(queue.size) { i ->
+                        val s = queue[i]
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onJump(i) }
+                                .padding(vertical = 10.dp),
+                        ) {
+                            Text(
+                                "${i + 1}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.width(28.dp),
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(s.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                                Text(
+                                    s.artist.orEmpty(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                            androidx.compose.material3.TextButton(onClick = { onRemove(i) }) {
+                                Text("移除")
+                            }
+                        }
+                        if (i < queue.lastIndex) androidx.compose.material3.HorizontalDivider()
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun SleepTimerSheet(
+    deadline: Long?,
+    onDismiss: () -> Unit,
+    onPick: (Int) -> Unit,
+    onEndOfSong: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                "睡眠定时 · Sleep Timer",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(8.dp))
+            if (deadline != null) {
+                Text(
+                    if (deadline == -1L) "将在当前歌曲结束时暂停"
+                    else "将在 ${((deadline - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0)} 分钟后暂停",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.TextButton(onClick = onCancel) { Text("取消定时") }
+            }
+            listOf(15, 30, 45, 60, 90).forEach { m ->
+                androidx.compose.material3.TextButton(
+                    onClick = { onPick(m) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("$m 分钟") }
+            }
+            androidx.compose.material3.TextButton(
+                onClick = onEndOfSong,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("当前歌曲结束后") }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun AddToPlaylistSheet(
+    state: PlaylistsSheetState,
+    onDismiss: () -> Unit,
+    onPick: (String) -> Unit,
+    onCreate: (String) -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                "加入歌单 · Add to playlist",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            state.message?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            var newName by remember { androidx.compose.runtime.mutableStateOf("") }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("新建歌单") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                androidx.compose.material3.Button(
+                    onClick = { onCreate(newName); newName = "" },
+                    enabled = newName.isNotBlank(),
+                ) { Text("创建") }
+            }
+            Spacer(Modifier.height(12.dp))
+            if (state.loading) {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                }
+            } else if (state.playlists.isEmpty()) {
+                Text(
+                    "还没有歌单 — 新建一个即可。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 16.dp),
+                )
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+                    items(state.playlists.size) { i ->
+                        val pl = state.playlists[i]
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPick(pl.id) }
+                                .padding(vertical = 12.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(pl.name, style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    "${pl.songCount} 首",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(
+                                Icons.Default.PlaylistAdd,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        if (i < state.playlists.lastIndex) androidx.compose.material3.HorizontalDivider()
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

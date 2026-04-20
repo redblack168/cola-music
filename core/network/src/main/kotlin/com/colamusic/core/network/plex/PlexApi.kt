@@ -100,4 +100,24 @@ interface PlexApi {
         @Query("rating") rating: Int,
         @Query("identifier") identifier: String = "com.plexapp.plugins.library",
     )
+
+    /**
+     * Create a playlist.
+     * Plex needs a library-sourced URI listing the tracks to seed it with:
+     *   uri = server://{machineIdentifier}/com.plexapp.plugins.library/library/metadata/{ratingKey1},{ratingKey2}
+     */
+    @POST("playlists")
+    suspend fun createPlaylist(
+        @Query("type") type: String = "audio",
+        @Query("title") title: String,
+        @Query("smart") smart: Int = 0,
+        @Query("uri") uri: String,
+    ): PlexContainer<PlexMetadataBody>
+
+    /** Append items to an existing playlist (same URI format). */
+    @retrofit2.http.PUT("playlists/{ratingKey}/items")
+    suspend fun addToPlaylist(
+        @Path("ratingKey") ratingKey: String,
+        @Query("uri") uri: String,
+    ): PlexContainer<PlexMetadataBody>
 }

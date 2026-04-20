@@ -46,6 +46,7 @@ fun HomeScreen(
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val recent by vm.recentlyPlayed.collectAsStateWithLifecycle()
     val policy = streamPolicy()
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -56,7 +57,10 @@ fun HomeScreen(
         ) {
             Text("可乐音乐", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
-            Text("Navidrome 客户端", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "${state.serverType.displayName} 客户端",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.height(16.dp))
             FilledTonalButton(
                 onClick = {
@@ -83,6 +87,24 @@ fun HomeScreen(
                 //   2. 最近播放 — recent-played sits right under it.
                 //   3. 我的收藏 — starred albums.
                 //   4. 最近添加 — moved to the bottom; was previously the top row.
+                if (recent.isNotEmpty()) {
+                    Text(
+                        "最近听过",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(recent, key = { it.songId }) { s ->
+                            RecentSongCard(
+                                entity = s,
+                                cover = policy.coverArtUrl(s.coverArt, 320),
+                                onClick = { vm.playRecent(s); onNowPlayingClick() },
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
                 if (state.mostPlayed.isNotEmpty()) {
                     AlbumRow("最多播放", state.mostPlayed, policy, onAlbumClick)
                     Spacer(Modifier.height(16.dp))
@@ -115,6 +137,43 @@ private fun AlbumRow(
     Spacer(Modifier.height(8.dp))
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(items, key = { it.id }) { album -> AlbumCard(album, policy, onClick) }
+    }
+}
+
+@Composable
+private fun RecentSongCard(
+    entity: com.colamusic.core.database.entity.RecentSongEntity,
+    cover: String?,
+    onClick: () -> Unit,
+) {
+    Column(
+        Modifier.width(140.dp).clickable(onClick = onClick),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)),
+        ) {
+            if (cover != null) {
+                AsyncImage(
+                    model = cover,
+                    contentDescription = entity.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            entity.title,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            fontWeight = FontWeight.Medium,
+        )
+        Text(
+            entity.artist ?: "",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }
 

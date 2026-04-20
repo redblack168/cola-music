@@ -11,6 +11,7 @@ import com.colamusic.core.network.ActiveServerPreferences
 import com.colamusic.core.network.ServerType
 import com.colamusic.core.network.SessionStore
 import com.colamusic.core.network.SubsonicUrls
+import com.colamusic.core.network.emby.EmbySessionStore
 import com.colamusic.core.network.plex.PlexSessionStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -31,6 +32,7 @@ class StreamPolicy @Inject constructor(
     @ApplicationContext private val context: Context,
     private val sessionStore: SessionStore,
     private val plexSession: PlexSessionStore,
+    private val embySession: EmbySessionStore,
     private val activeServer: ActiveServerPreferences,
 ) {
     fun resolve(song: Song, policy: QualityPolicy, allowOnMobileData: Boolean = false): StreamInfo {
@@ -60,7 +62,8 @@ class StreamPolicy @Inject constructor(
 
         val url = when (activeServer.valueNow()) {
             ServerType.Plex -> plexStreamUrl(song) ?: ""
-            else -> {
+            ServerType.Emby, ServerType.Jellyfin -> embyStreamUrl(song) ?: ""
+            ServerType.Subsonic -> {
                 val cfg = sessionStore.current.value
                     ?: return StreamInfo("", StreamKind.Unknown, null, null, null)
                 SubsonicUrls.streamUrl(cfg, song.id, formatRaw = formatRaw, maxBitRate = maxBitRate)
@@ -80,7 +83,8 @@ class StreamPolicy @Inject constructor(
         if (coverArtId == null) return null
         return when (activeServer.valueNow()) {
             ServerType.Plex -> plexCoverUrl(coverArtId, size)
-            else -> {
+            ServerType.Emby, ServerType.Jellyfin -> embyCoverUrl(coverArtId, size)
+            ServerType.Subsonic -> {
                 val cfg = sessionStore.current.value ?: return null
                 SubsonicUrls.coverArtUrl(cfg, coverArtId, size)
             }
@@ -95,6 +99,28 @@ class StreamPolicy @Inject constructor(
         val path = song.path ?: return null
         val base = plex.baseUrl.trimEnd('/')
         return "$base$path?X-Plex-Token=${plex.token}"
+    }
+
+    // ---- Emby helpers ----
+
+    private fun embyStreamUrl(song: Song): String? {
+        val cfg = embySession.current.value ?: return null
+        val base = cfg.baseUrl.trimEnd('/')
+        // `static=true` tells Emby to serve the original bytes rather than
+        // transcoding. FLAC/ALAC/whatever streams directly. Token is passed
+        // as `api_key` query so Media3 doesn't need to add headers.
+        return "$base/Audio/${song.id}/stream" +
+            "?static=true" +
+            "&DeviceId=${cfg.deviceId}" +
+            "&api_key=${cfg.accessToken}"
+    }
+
+    private fun embyCoverUrl(itemId: String, size: Int): String? {
+        val cfg = embySession.current.value ?: return null
+        val base = cfg.baseUrl.trimEnd('/')
+        return "$base/Items/$itemId/Images/Primary" +
+            "?maxWidth=$size&maxHeight=$size&quality=90" +
+            "&api_key=${cfg.accessToken}"
     }
 
     private fun plexCoverUrl(thumbPath: String, size: Int): String? {

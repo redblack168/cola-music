@@ -5,6 +5,7 @@ import com.colamusic.core.lyrics.LrcParser
 import com.colamusic.core.lyrics.LyricsCandidate
 import com.colamusic.core.lyrics.LyricsProvider
 import com.colamusic.core.lyrics.LyricsRequest
+import com.colamusic.core.lyrics.normalize.TextNormalizer
 import com.colamusic.core.model.LyricsSource
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -22,6 +23,7 @@ import javax.inject.Singleton
 class LrclibProvider @Inject constructor(
     private val client: OkHttpClient,
     private val json: Json,
+    private val normalizer: TextNormalizer,
 ) : LyricsProvider {
     override val source: LyricsSource = LyricsSource.Lrclib
     override val safeDefault: Boolean = true
@@ -29,10 +31,15 @@ class LrclibProvider @Inject constructor(
     override suspend fun lookup(request: LyricsRequest): List<LyricsCandidate> {
         if (request.title.isBlank() || request.artist.isNullOrBlank()) return emptyList()
 
+        // Strip parenthetical annotations (e.g. "胡广生（我欠你啥子嘛）" → "胡广生")
+        // before querying. LRCLIB's match is strict on track_name.
+        val title = normalizer.searchableTitle(request.title).ifBlank { request.title }
+        val artist = normalizer.searchableArtist(request.artist).ifBlank { request.artist!! }
+
         // /api/get — exact track match by artist + title + album (optional) + duration
         val exactUrl = "https://lrclib.net/api/get".toHttpUrl().newBuilder()
-            .addQueryParameter("artist_name", request.artist)
-            .addQueryParameter("track_name", request.title)
+            .addQueryParameter("artist_name", artist)
+            .addQueryParameter("track_name", title)
             .apply {
                 request.album?.takeIf { it.isNotBlank() }?.let { addQueryParameter("album_name", it) }
                 request.durationSec?.let { addQueryParameter("duration", it.toString()) }
@@ -49,8 +56,8 @@ class LrclibProvider @Inject constructor(
 
         // /api/search — fuzzier match
         val searchUrl = "https://lrclib.net/api/search".toHttpUrl().newBuilder()
-            .addQueryParameter("artist_name", request.artist)
-            .addQueryParameter("track_name", request.title)
+            .addQueryParameter("artist_name", artist)
+            .addQueryParameter("track_name", title)
             .build().toString()
 
         return runCatching {

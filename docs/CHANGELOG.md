@@ -2,6 +2,129 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.4] — 2026-04-20
+
+### Added — Spotify-parity feature bundle
+
+- **Favorites (收藏).** Heart button on Now Playing screen. Optimistic
+  update; rolls back on server error. Works across all four backends
+  (Navidrome/Subsonic, Emby/Jellyfin, Plex). Plex's "star" maps to
+  `userRating=10` since Plex has no dedicated favorite flag.
+- **Playlists (歌单).** New bottom sheet from Now Playing: "加入歌单"
+  lists the user's server-side playlists, and an inline "新建歌单"
+  field creates a new playlist pre-populated with the current song.
+  Server-side endpoints per backend:
+    - Subsonic: `createPlaylist?name=…&songId=…` and
+      `updatePlaylist?playlistId=…&songIdToAdd=…`.
+    - Emby/Jellyfin: `POST /Playlists?Name=…&Ids=…` and
+      `POST /Playlists/{id}/Items?Ids=…`.
+    - Plex: `POST /playlists?type=audio&title=…&uri=server://…/library/metadata/…`
+      and `PUT /playlists/{id}/items?uri=…`.
+- **Queue editor (播放队列).** New queue bottom sheet shows the live
+  ExoPlayer timeline; tap a row to jump, "移除" to drop it. Backed by
+  `MediaController.moveMediaItem` / `removeMediaItem` / `seekTo(index)`.
+- **Shuffle & repeat modes.** Icon-toggle row on Now Playing wires to
+  Media3's `shuffleModeEnabled` and `repeatMode` (off / all / one).
+- **Sleep timer (睡眠定时).** Bottom sheet with 15/30/45/60/90-minute
+  presets and "当前歌曲结束后". Scheduled coroutine pauses the player
+  when the deadline fires.
+- **Lockscreen / Dynamic Island / cover display lyrics.** Settings →
+  "锁屏显示歌词" toggles a lyric ticker that pushes the active synced
+  line into `MediaMetadata.description` + `subtitle`, so the system
+  notification — and therefore the Samsung Z Fold 7 cover screen, the
+  dynamic island tile, and the lockscreen — all show the live lyric.
+  Uses `Player.replaceMediaItem` on a metadata-only diff so playback
+  does not rebuffer. Off by default.
+- **Recently played (最近听过).** Room-backed history row on Home,
+  populated each time `play()` or an auto-advance fires. Tap a card to
+  resume that song. Persisted across launches.
+- **In-app update checker.** Settings → "检查更新" queries
+  `api.github.com/repos/redblack168/cola-music/releases/latest`,
+  compares the semver tag against `BuildConfig.VERSION_NAME`, and if
+  newer offers "立即下载" which enqueues the release APK via
+  `DownloadManager` and opens the system package installer via a
+  bundled `FileProvider` when the download completes. Requires
+  `REQUEST_INSTALL_PACKAGES`.
+
+### Fixed
+
+- **艺术家 tab empty on Jellyfin libraries that have no MusicArtist
+  entities.** New `synthesizeArtistsFromAudio` fallback groups Audio
+  items by `AlbumArtist` / `Artists` / `ArtistItems` and synthesizes
+  Artist rows with a `synthetic-artist:<urlEncoded>` prefix that
+  `artistAlbums()` decodes back to filter Audio items by artist name.
+  Mirrors the existing `synthesizeAlbumsFromAudio` fallback from v0.4.3.
+- `LibraryViewModel` now refreshes on backend switch (previously it
+  only loaded once at VM construction, so toggling Navidrome → Jellyfin
+  left stale artists / albums / playlists on screen).
+
+### Internal
+
+- `MusicServerRepository.createPlaylist(name, songIds)` and
+  `addToPlaylist(playlistId, songIds)` added to the common surface; all
+  three adapters implement them.
+- `PlayerController` gains `shuffleOn`, `repeatMode`, `queue`,
+  `sleepDeadline` StateFlows and `removeFromQueue`, `moveInQueue`,
+  `jumpTo`, `setSleepTimer`, `sleepAtEndOfSong`, `toggleShuffle`,
+  `cycleRepeat` entry points.
+- `core:player` now depends on `core:database` so `PlayerController`
+  can write `RecentSongEntity` rows on every play.
+- `LyricNotificationPreferences` DataStore backing "show lyrics in
+  system notification". Enforced off by default to avoid surprising
+  users on their first launch.
+- versionCode 31, versionName 0.4.4.
+
+
+
+## [0.4.3] — 2026-04-20
+
+### Added
+- **Jellyfin backend.** Jellyfin is a hard fork of Emby and shares the
+  entire REST surface we depend on (`/Users/AuthenticateByName`,
+  `/Users/{id}/Items`, `/Audio/{id}/stream?static=true`,
+  `/Items/{id}/Images/Primary`, `/Users/{id}/FavoriteItems`,
+  `/Users/{id}/PlayedItems`). Rather than duplicate the adapter, the new
+  `ServerType.Jellyfin` chip routes through the same `EmbyRepository`.
+  Login picker now has 4 options: Navidrome / Emby / Jellyfin / Plex.
+- Home screen subtitle is dynamic — "Emby 客户端", "Jellyfin 客户端",
+  "Plex 客户端", or "Navidrome / OpenSubsonic 客户端" based on active
+  backend.
+
+### Internal
+- `DispatchingMusicServerRepository` and `StreamPolicy` treat Emby and
+  Jellyfin identically (same endpoints, same URL formats).
+- Debug login auto-fill: Jellyfin chip reads the same `EMBY_*` values
+  from `.env.local` as Emby chip, since one test server typically
+  serves both roles.
+- versionCode 30, versionName 0.4.3.
+
+
+
+## [0.4.2] — 2026-04-20
+
+### Added
+- **Emby backend.** Third supported server type alongside Navidrome and
+  Plex. Full implementation: auth via `/Users/AuthenticateByName`, browse
+  via `/Users/{userId}/Items`, search, playlists, favorites (star ↔
+  Emby's IsFavorite), scrobble via `/Users/{userId}/PlayedItems/{id}`.
+  Streaming uses the `static=true` direct endpoint — original bytes, no
+  forced transcoding. Cover URLs route through `/Items/{id}/Images/Primary`.
+- `EmbyConfig`, `EmbyDtos`, `EmbyApi`, `EmbyAuthInterceptor`,
+  `EmbySessionStore`, `EmbyRepository`.
+- `DispatchingMusicServerRepository` routes Emby alongside Subsonic and
+  Plex based on `ActiveServerPreferences.valueNow()`.
+
+### Changed
+- `LoginViewModel` now awaits the cached ServerType StateFlow to match
+  the newly-written value before calling `repo.login()`, eliminating a
+  race where a fresh login could dispatch to the wrong backend.
+- Login picker: Emby chip is now enabled.
+
+### Internal
+- versionCode 29, versionName 0.4.2.
+
+
+
 ## [0.4.1] — 2026-04-19
 
 ### Added

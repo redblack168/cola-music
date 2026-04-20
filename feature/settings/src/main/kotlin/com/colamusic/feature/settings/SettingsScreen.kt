@@ -40,6 +40,7 @@ fun SettingsScreen(
     onOpenDownloads: () -> Unit,
     onOpenTheme: () -> Unit,
     onOpenLanguage: () -> Unit,
+    onCheckForUpdate: () -> Unit = {},
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -199,6 +200,27 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
         HorizontalDivider()
+        Spacer(Modifier.height(12.dp))
+        Text("锁屏与灵动岛", style = MaterialTheme.typography.titleSmall)
+        ListItem(
+            headlineContent = { Text("锁屏显示歌词") },
+            supportingContent = { Text("将当前同步歌词行实时写入媒体通知,锁屏、灵动岛和折叠屏封面屏均可见。仅当歌词为同步型时生效。") },
+            trailingContent = {
+                Switch(
+                    checked = state.lyricsInNotification,
+                    onCheckedChange = { vm.setLyricsInNotification(it) },
+                )
+            },
+        )
+
+        Spacer(Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onCheckForUpdate,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("检查更新") }
+
         Spacer(Modifier.height(12.dp))
         Button(onClick = { vm.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
             Text("退出登录")

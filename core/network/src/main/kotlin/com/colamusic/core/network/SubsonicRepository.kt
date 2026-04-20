@@ -119,6 +119,18 @@ class SubsonicRepository @Inject constructor(
             ?: error("Playlist $id not found")
     }
 
+    override suspend fun createPlaylist(name: String, songIds: List<String>): Outcome<String> = outcome {
+        val resp = api.createPlaylist(name = name, songIds = songIds).response
+        if (resp.status != "ok") error(resp.error?.message ?: "createPlaylist failed")
+        resp.playlist?.id ?: error("createPlaylist: server returned no id")
+    }
+
+    override suspend fun addToPlaylist(playlistId: String, songIds: List<String>): Outcome<Unit> = outcome {
+        if (songIds.isEmpty()) return@outcome
+        val resp = api.updatePlaylist(playlistId = playlistId, songIdToAdd = songIds).response
+        if (resp.status != "ok") error(resp.error?.message ?: "updatePlaylist failed")
+    }
+
     override suspend fun star(songId: String?, albumId: String?, artistId: String?): Outcome<Unit> = outcome {
         api.star(songId, albumId, artistId).response.let {
             if (it.status != "ok") error(it.error?.message ?: "Star failed")

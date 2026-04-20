@@ -5,6 +5,7 @@ import com.colamusic.core.lyrics.LrcParser
 import com.colamusic.core.lyrics.LyricsCandidate
 import com.colamusic.core.lyrics.LyricsProvider
 import com.colamusic.core.lyrics.LyricsRequest
+import com.colamusic.core.lyrics.normalize.TextNormalizer
 import com.colamusic.core.model.LyricsSource
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -28,6 +29,7 @@ import javax.inject.Singleton
 class NeteaseLyricsProvider @Inject constructor(
     private val client: OkHttpClient,
     private val json: Json,
+    private val normalizer: TextNormalizer,
 ) : LyricsProvider {
     override val source: LyricsSource = LyricsSource.Netease
     override val safeDefault: Boolean = false
@@ -43,7 +45,9 @@ class NeteaseLyricsProvider @Inject constructor(
     }
 
     private fun doLookup(request: LyricsRequest): List<LyricsCandidate> {
-        val query = listOfNotNull(request.title, request.artist).joinToString(" ")
+        val title = normalizer.searchableTitle(request.title).ifBlank { request.title }
+        val artist = normalizer.searchableArtist(request.artist).ifBlank { request.artist.orEmpty() }
+        val query = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ")
         val searchUrl = "https://music.163.com/api/search/pc".toHttpUrl().newBuilder()
             .addQueryParameter("s", query)
             .addQueryParameter("type", "1")

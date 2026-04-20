@@ -6,6 +6,7 @@ import com.colamusic.core.model.Artist
 import com.colamusic.core.model.Playlist
 import com.colamusic.core.model.SearchResult
 import com.colamusic.core.model.Song
+import com.colamusic.core.network.emby.EmbyRepository
 import com.colamusic.core.network.plex.PlexRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,6 +25,7 @@ import javax.inject.Singleton
 class DispatchingMusicServerRepository @Inject constructor(
     private val subsonic: SubsonicRepository,
     private val plex: PlexRepository,
+    private val emby: EmbyRepository,
     private val activePrefs: ActiveServerPreferences,
 ) : MusicServerRepository {
 
@@ -31,7 +33,12 @@ class DispatchingMusicServerRepository @Inject constructor(
         get() = when (activePrefs.valueNow()) {
             ServerType.Subsonic -> subsonic
             ServerType.Plex -> plex
-            ServerType.Emby -> subsonic  // not implemented yet, fall back
+            // Emby and Jellyfin share the EmbyRepository — Jellyfin is a hard
+            // fork of Emby and the REST surface we rely on (auth, Items,
+            // Audio/stream, Images/Primary, PlayedItems, FavoriteItems) is
+            // identical. The two separate chips just let the user pick the
+            // label that matches their actual server.
+            ServerType.Emby, ServerType.Jellyfin -> emby
         }
 
     override val currentConfig: SubsonicConfig? get() = active.currentConfig
@@ -48,22 +55,23 @@ class DispatchingMusicServerRepository @Inject constructor(
         // Wipe any prior session from a different backend before logging
         // into this one, so only one backend's creds exist at a time.
         val type = activePrefs.valueNow()
-        listOf(subsonic, plex).forEach { repo ->
+        listOf(subsonic, plex, emby).forEach { repo ->
             if (repo != pickRepo(type)) repo.logout()
         }
         return pickRepo(type).login(config)
     }
 
     override fun logout() {
-        // Clear both — logout is unambiguous.
+        // Clear all — logout is unambiguous.
         subsonic.logout()
         plex.logout()
+        emby.logout()
     }
 
     private fun pickRepo(type: ServerType): MusicServerRepository = when (type) {
         ServerType.Subsonic -> subsonic
         ServerType.Plex -> plex
-        ServerType.Emby -> subsonic
+        ServerType.Emby, ServerType.Jellyfin -> emby
     }
 
     override suspend fun newest(size: Int, offset: Int): Outcome<List<Album>> =
@@ -97,6 +105,12 @@ class DispatchingMusicServerRepository @Inject constructor(
     override suspend fun playlists(): Outcome<List<Playlist>> = active.playlists()
 
     override suspend fun playlist(id: String): Outcome<PlaylistWithSongs> = active.playlist(id)
+
+    override suspend fun createPlaylist(name: String, songIds: List<String>): Outcome<String> =
+        active.createPlaylist(name, songIds)
+
+    override suspend fun addToPlaylist(playlistId: String, songIds: List<String>): Outcome<Unit> =
+        active.addToPlaylist(playlistId, songIds)
 
     override suspend fun star(
         songId: String?, albumId: String?, artistId: String?,

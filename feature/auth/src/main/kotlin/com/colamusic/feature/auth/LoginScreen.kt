@@ -1,9 +1,9 @@
 package com.colamusic.feature.auth
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +31,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.colamusic.core.network.ServerType
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit, vm: LoginViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -53,10 +54,10 @@ fun LoginScreen(onLoggedIn: () -> Unit, vm: LoginViewModel = hiltViewModel()) {
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(6.dp))
-        val chipScroll = rememberScrollState()
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(chipScroll),
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ServerType.entries.forEach { type ->
                 FilterChip(

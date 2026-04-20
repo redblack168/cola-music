@@ -6,11 +6,15 @@ import com.colamusic.core.common.Outcome
 import com.colamusic.core.model.Album
 import com.colamusic.core.model.Artist
 import com.colamusic.core.model.Playlist
+import com.colamusic.core.network.ActiveServerPreferences
 import com.colamusic.core.network.MusicServerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -18,11 +22,17 @@ import javax.inject.Inject
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val repo: MusicServerRepository,
+    activeServer: ActiveServerPreferences,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LibraryState())
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
-    init { refresh() }
+    init {
+        refresh()
+        // drop(1) because we already refreshed once above; only react to
+        // subsequent backend switches.
+        activeServer.active.drop(1).onEach { refresh() }.launchIn(viewModelScope)
+    }
 
     fun refresh() {
         viewModelScope.launch {

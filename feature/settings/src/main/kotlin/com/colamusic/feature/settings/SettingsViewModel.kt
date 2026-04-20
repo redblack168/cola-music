@@ -6,6 +6,7 @@ import com.colamusic.core.lyrics.LyricsPreferences
 import com.colamusic.core.model.QualityPolicy
 import com.colamusic.core.network.SessionStore
 import com.colamusic.core.network.MusicServerRepository
+import com.colamusic.core.player.LyricNotificationPreferences
 import com.colamusic.core.player.PlayerPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ class SettingsViewModel @Inject constructor(
     private val repo: MusicServerRepository,
     private val prefs: PlayerPreferences,
     private val lyricsPrefs: LyricsPreferences,
+    private val lyricNotifPrefs: LyricNotificationPreferences,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -36,6 +38,7 @@ class SettingsViewModel @Inject constructor(
         lyricsPrefs.lrclibEnabled.onEach { v -> _state.update { it.copy(lyricsLrclib = v) } }.launchIn(viewModelScope)
         lyricsPrefs.neteaseEnabled.onEach { v -> _state.update { it.copy(lyricsNetease = v) } }.launchIn(viewModelScope)
         lyricsPrefs.qqEnabled.onEach { v -> _state.update { it.copy(lyricsQQ = v) } }.launchIn(viewModelScope)
+        lyricNotifPrefs.enabled.onEach { v -> _state.update { it.copy(lyricsInNotification = v) } }.launchIn(viewModelScope)
         sessionStore.current.onEach { c ->
             _state.update { it.copy(serverUrl = c?.baseUrl, username = c?.username) }
         }.launchIn(viewModelScope)
@@ -49,6 +52,7 @@ class SettingsViewModel @Inject constructor(
     fun setLrclibLyrics(v: Boolean) = viewModelScope.launch { lyricsPrefs.setLrclibEnabled(v) }
     fun setNeteaseLyrics(v: Boolean) = viewModelScope.launch { lyricsPrefs.setNeteaseEnabled(v) }
     fun setQQLyrics(v: Boolean) = viewModelScope.launch { lyricsPrefs.setQQEnabled(v) }
+    fun setLyricsInNotification(v: Boolean) = viewModelScope.launch { lyricNotifPrefs.setEnabled(v) }
 
     fun logout(onDone: () -> Unit) {
         repo.logout()
@@ -64,6 +68,7 @@ data class SettingsState(
     val lyricsLrclib: Boolean = true,
     val lyricsNetease: Boolean = false,
     val lyricsQQ: Boolean = false,
+    val lyricsInNotification: Boolean = false,
     val serverUrl: String? = null,
     val username: String? = null,
 )

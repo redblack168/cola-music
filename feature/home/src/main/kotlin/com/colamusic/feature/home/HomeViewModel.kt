@@ -3,13 +3,23 @@ package com.colamusic.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.colamusic.core.common.Outcome
+import com.colamusic.core.database.dao.RecentSongDao
+import com.colamusic.core.database.entity.RecentSongEntity
 import com.colamusic.core.model.Album
+import com.colamusic.core.model.Song
+import com.colamusic.core.network.ActiveServerPreferences
 import com.colamusic.core.network.MusicServerRepository
+import com.colamusic.core.network.ServerType
 import com.colamusic.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -18,11 +28,40 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val repo: MusicServerRepository,
     private val controller: PlayerController,
+    private val recentSongDao: RecentSongDao,
+    activeServer: ActiveServerPreferences,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(HomeState())
+    private val _state = MutableStateFlow(HomeState(serverType = activeServer.valueNow()))
     val state: StateFlow<HomeState> = _state.asStateFlow()
 
-    init { refresh() }
+    val recentlyPlayed: StateFlow<List<RecentSongEntity>> = recentSongDao.observe(20)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun playRecent(e: RecentSongEntity) {
+        controller.play(
+            Song(
+                id = e.songId,
+                title = e.title,
+                album = e.album,
+                albumId = e.albumId,
+                artist = e.artist,
+                artistId = null,
+                duration = e.duration,
+                coverArt = e.coverArt,
+            )
+        )
+    }
+
+    init {
+        // Re-fetch whenever the active backend changes (logout → login to a
+        // different server would otherwise leave stale content on Home).
+        activeServer.active
+            .onEach { t ->
+                _state.update { it.copy(serverType = t) }
+                refresh()
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun refresh() {
         _state.update { it.copy(loading = true, error = null) }
@@ -70,6 +109,7 @@ class HomeViewModel @Inject constructor(
 }
 
 data class HomeState(
+    val serverType: ServerType = ServerType.Subsonic,
     val loading: Boolean = true,
     val shuffling: Boolean = false,
     val mostPlayed: List<Album> = emptyList(),

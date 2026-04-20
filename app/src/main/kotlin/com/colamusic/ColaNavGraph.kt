@@ -44,6 +44,7 @@ import com.colamusic.feature.settings.SettingsScreen
 import com.colamusic.ui.LanguagePickerScreen
 import com.colamusic.ui.MiniPlayerBar
 import com.colamusic.ui.ThemePickerScreen
+import com.colamusic.update.UpdateDialog
 
 object Routes {
     const val Login = "login"
@@ -86,6 +87,14 @@ fun ColaNavGraph(
             }
         }
     }
+
+    val checkUpdate = androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    UpdateDialog(
+        triggerCheck = checkUpdate.value,
+        onTriggerHandled = { checkUpdate.value = false },
+    )
 
     val showBottomBar = setOf(Routes.Home, Routes.Library, Routes.Search, Routes.Settings)
     Scaffold(
@@ -144,6 +153,7 @@ fun ColaNavGraph(
                     onOpenDownloads = { nav.navigate(Routes.Downloads) },
                     onOpenTheme = { nav.navigate(Routes.Theme) },
                     onOpenLanguage = { nav.navigate(Routes.Language) },
+                    onCheckForUpdate = { checkUpdate.value = true },
                 )
             }
             composable(Routes.Diagnostics) {

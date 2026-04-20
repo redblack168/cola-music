@@ -41,6 +41,12 @@ interface MusicServerRepository {
     suspend fun playlists(): Outcome<List<Playlist>>
     suspend fun playlist(id: String): Outcome<PlaylistWithSongs>
 
+    /** Create a new playlist. [songIds] optional — server may accept pre-populated. */
+    suspend fun createPlaylist(name: String, songIds: List<String> = emptyList()): Outcome<String>
+
+    /** Append [songIds] to an existing playlist. */
+    suspend fun addToPlaylist(playlistId: String, songIds: List<String>): Outcome<Unit>
+
     suspend fun star(songId: String? = null, albumId: String? = null, artistId: String? = null): Outcome<Unit>
     suspend fun unstar(songId: String? = null, albumId: String? = null, artistId: String? = null): Outcome<Unit>
 

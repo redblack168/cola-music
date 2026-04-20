@@ -19,8 +19,12 @@ enum class ServerType(
     Emby(
         id = "emby",
         displayName = "Emby",
-        supported = false,
-        comingInVersion = "0.4.1",
+        supported = true,
+    ),
+    Jellyfin(
+        id = "jellyfin",
+        displayName = "Jellyfin",
+        supported = true,
     ),
     Plex(
         id = "plex",

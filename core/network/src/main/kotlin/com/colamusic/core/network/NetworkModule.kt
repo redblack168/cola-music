@@ -1,5 +1,8 @@
 package com.colamusic.core.network
 
+import com.colamusic.core.network.emby.EmbyApi
+import com.colamusic.core.network.emby.EmbyAuthInterceptor
+import com.colamusic.core.network.emby.EmbySessionStore
 import com.colamusic.core.network.plex.PlexApi
 import com.colamusic.core.network.plex.PlexAuthInterceptor
 import com.colamusic.core.network.plex.PlexConfig
@@ -108,4 +111,43 @@ object NetworkModule {
     @Provides @Singleton
     fun plexApi(@Named("plex") retrofit: Retrofit): PlexApi =
         retrofit.create(PlexApi::class.java)
+
+    // ---- Emby: separate OkHttp + Retrofit stack ----
+    // Emby uses an `X-Emby-Token` header + `api_key` query param, injected
+    // by EmbyAuthInterceptor. Keep separate from Subsonic/Plex so the
+    // interceptor fires only on Emby requests.
+
+    @Provides @Singleton
+    fun embyAuthInterceptor(store: EmbySessionStore): EmbyAuthInterceptor =
+        EmbyAuthInterceptor(
+            configSource = { store.current.value },
+            pendingBaseUrl = { store.pendingBaseUrl() },
+        )
+
+    @Provides @Singleton @Named("emby")
+    fun embyOkHttp(embyAuth: EmbyAuthInterceptor): OkHttpClient {
+        val logger = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.HEADERS
+        }
+        return OkHttpClient.Builder()
+            .addInterceptor(embyAuth)
+            .addInterceptor(logger)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    @Provides @Singleton @Named("emby")
+    fun embyRetrofit(@Named("emby") client: OkHttpClient, json: Json): Retrofit =
+        Retrofit.Builder()
+            .baseUrl("http://127.0.0.1/")
+            .client(client)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+
+    @Provides @Singleton
+    fun embyApi(@Named("emby") retrofit: Retrofit): EmbyApi =
+        retrofit.create(EmbyApi::class.java)
 }

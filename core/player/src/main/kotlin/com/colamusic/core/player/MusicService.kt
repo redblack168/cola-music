@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -14,7 +16,16 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.colamusic.core.common.Logx
+import com.colamusic.core.lyrics.LyricsRepository
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 
@@ -32,9 +43,14 @@ import javax.inject.Inject
 class MusicService : MediaLibraryService() {
 
     @Inject lateinit var okHttp: OkHttpClient
+    @Inject lateinit var lyricsRepo: LyricsRepository
+    @Inject lateinit var lyricNotificationPrefs: LyricNotificationPreferences
 
     private var session: MediaLibrarySession? = null
     private var player: ExoPlayer? = null
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var lyricTickerJob: Job? = null
+    private var lastLyricLine: String? = null
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -42,6 +58,7 @@ class MusicService : MediaLibraryService() {
         runCatching {
             buildSession()
             attachNotificationProvider()
+            startLyricTicker()
             Logx.i("svc", "MusicService.onCreate() ok")
         }.onFailure {
             Logx.e("svc", "MusicService.onCreate() failed", it)
@@ -50,6 +67,59 @@ class MusicService : MediaLibraryService() {
             session = null
             player = null
         }
+    }
+
+    /**
+     * Pushes the currently-active synced-lyric line into the playing
+     * MediaItem's metadata (as description + subtitle) so the system
+     * notification — and therefore the Samsung Z Fold 7 cover display,
+     * the dynamic island tile, and the lockscreen — all show the live
+     * lyric. Gated by [LyricNotificationPreferences]; off by default.
+     *
+     * Uses [androidx.media3.common.Player.replaceMediaItem] on a metadata-
+     * only diff so ExoPlayer does NOT rebuffer — only the session refreshes.
+     */
+    private fun startLyricTicker() {
+        lyricTickerJob?.cancel()
+        lyricTickerJob = serviceScope.launch {
+            while (isActive) {
+                val enabled = runCatching { lyricNotificationPrefs.enabledNow() }.getOrDefault(false)
+                val p = player
+                val ly = lyricsRepo.current.value
+                if (enabled && p != null && ly != null && ly.isSynced && !ly.isEmpty) {
+                    val pos = runCatching { p.currentPosition }.getOrDefault(0L)
+                    val line = activeLineAt(ly, pos)
+                    if (line != null && line != lastLyricLine) {
+                        lastLyricLine = line
+                        val idx = runCatching { p.currentMediaItemIndex }.getOrDefault(-1)
+                        val item = runCatching { p.currentMediaItem }.getOrNull()
+                        if (idx >= 0 && item != null) {
+                            val updated = item.buildUpon()
+                                .setMediaMetadata(
+                                    item.mediaMetadata.buildUpon()
+                                        .setDescription(line)
+                                        .setSubtitle(line)
+                                        .build()
+                                ).build()
+                            runCatching { p.replaceMediaItem(idx, updated) }
+                        }
+                    }
+                } else if (!enabled) {
+                    // Reset so turning the setting back on refreshes immediately.
+                    lastLyricLine = null
+                }
+                delay(500L)
+            }
+        }
+    }
+
+    private fun activeLineAt(ly: com.colamusic.core.model.Lyrics, positionMs: Long): String? {
+        var current: String? = null
+        for (line in ly.lines) {
+            val t = line.timeMs ?: continue
+            if (t <= positionMs) current = line.text else break
+        }
+        return current
     }
 
     private fun buildSession() {
@@ -120,6 +190,8 @@ class MusicService : MediaLibraryService() {
 
     override fun onDestroy() {
         Logx.i("svc", "MusicService.onDestroy()")
+        runCatching { lyricTickerJob?.cancel() }
+        runCatching { serviceScope.cancel() }
         runCatching { session?.release() }
         runCatching { player?.release() }
         session = null

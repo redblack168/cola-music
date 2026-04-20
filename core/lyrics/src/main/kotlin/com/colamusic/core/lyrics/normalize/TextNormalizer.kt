@@ -26,6 +26,42 @@ class TextNormalizer @Inject constructor() {
     fun normalizeTitle(raw: String?, appContext: Context? = null): String =
         normalize(raw, appContext)
 
+    /**
+     * "Searchable" form of a title — what you'd hand to LRCLIB / NetEase /
+     * QQ Music / Navidrome as the query string. Differs from [normalize]:
+     *
+     *  - Parenthetical annotations are stripped entirely. Titles on
+     *    Chinese rips often carry inline hints like `胡广生（我欠你啥子嘛）` or
+     *    `晴天（长版）`; all of those query as the bare title instead.
+     *  - Separators (、 / ／) collapse to ASCII space so multi-track titles
+     *    don't hit service-side empty-result bugs.
+     *
+     * Keeps CJK characters intact so "胡广生" stays "胡广生" — only the
+     * noise wrapper goes.
+     */
+    fun searchableTitle(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        var s = Normalizer.normalize(raw, Normalizer.Form.NFKC)
+        s = fullToHalf(s)
+        // Drop everything inside paired brackets (both ASCII and CJK forms).
+        s = PAREN_CONTENT.matcher(s).replaceAll(" ")
+        // Strip common noise tokens (reuse the matching list from normalize).
+        s = NOISE_REGEX.matcher(s).replaceAll(" ")
+        // Collapse separator characters.
+        s = s.replace(COLLAB_SPLIT, " ")
+        // Whitespace trim/collapse.
+        return s.replace(MULTI_WS, " ").trim()
+    }
+
+    /** Searchable form of an artist — just separator + whitespace cleanup. */
+    fun searchableArtist(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        var s = Normalizer.normalize(raw, Normalizer.Form.NFKC)
+        s = fullToHalf(s)
+        s = s.replace(COLLAB_SPLIT, " ")
+        return s.replace(MULTI_WS, " ").trim()
+    }
+
     fun normalizeArtist(raw: String?, appContext: Context? = null): String {
         if (raw.isNullOrBlank()) return ""
         val first = normalize(raw, appContext)
@@ -90,6 +126,10 @@ class TextNormalizer @Inject constructor() {
     private companion object {
         val BRACKETS_OPEN = java.util.regex.Pattern.compile("[\\[【（〔〈《「『]")
         val BRACKETS_CLOSE = java.util.regex.Pattern.compile("[\\]】）〕〉》」』]")
+        /** Matches any paired bracket expression (content inside discarded). */
+        val PAREN_CONTENT = java.util.regex.Pattern.compile(
+            "[\\[【（〔〈《「『(][^\\]】）〕〉》」』)]*[\\]】）〕〉》」』)]"
+        )
         val MULTI_WS = "\\s+".toRegex()
         val COLLAB_SPLIT = "[、/／]".toRegex()
 
