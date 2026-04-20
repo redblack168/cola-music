@@ -93,6 +93,7 @@ private enum class NowPlayingMode { Cover, Lyrics }
 @Composable
 fun NowPlayingScreen(
     onBack: () -> Unit,
+    onOpenAlbum: (String) -> Unit = {},
     vm: NowPlayingViewModel = hiltViewModel(),
 ) {
     val song by vm.song.collectAsStateWithLifecycle()
@@ -256,7 +257,18 @@ fun NowPlayingScreen(
         val onLyrics = pagerState.currentPage == 1
 
         androidx.compose.animation.AnimatedVisibility(visible = !onLyrics) {
-            Column {
+            // Title + "artist · album" subtitle. Tapping the subtitle jumps
+            // to the album detail (Spotify pattern), so the user isn't
+            // forced through Home → Library → search to get back to the
+            // album they're listening to.
+            val albumId = song?.albumId
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .let {
+                        if (albumId != null) it.clickable { onOpenAlbum(albumId) } else it
+                    },
+            ) {
                 Spacer(Modifier.height(16.dp))
                 Text(
                     song?.title ?: "未播放",
@@ -265,11 +277,23 @@ fun NowPlayingScreen(
                     maxLines = 1,
                 )
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    listOfNotNull(song?.artist, song?.album).joinToString(" · "),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        listOfNotNull(song?.artist, song?.album).joinToString(" · "),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (albumId != null) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.Album,
+                            contentDescription = "查看专辑",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
             }
         }
 

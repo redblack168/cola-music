@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.Icon
@@ -36,6 +38,7 @@ import coil.compose.AsyncImage
 import com.colamusic.core.model.Album
 import com.colamusic.core.model.Artist
 import com.colamusic.core.model.Playlist
+import com.colamusic.core.model.Song
 import com.colamusic.core.player.StreamPolicy
 import com.colamusic.feature.library.internal.streamPolicy
 
@@ -65,6 +68,55 @@ fun ArtistsTab(artists: List<Artist>, onClick: (Artist) -> Unit) {
                 supportingContent = { Text("${a.albumCount} 张专辑") },
                 leadingContent = { Icon(Icons.Default.Person, null) },
                 modifier = Modifier.clickable { onClick(a) },
+            )
+        }
+    }
+}
+
+@Composable
+fun LikedSongsTab(songs: List<Song>, onPlay: (Int) -> Unit) {
+    if (songs.isEmpty()) {
+        Box(
+            Modifier.fillMaxSize().padding(24.dp),
+            contentAlignment = androidx.compose.ui.Alignment.Center,
+        ) {
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "还没有喜欢的歌曲。在播放页点 ❤ 即可收藏。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        items(songs.size) { i ->
+            val s = songs[i]
+            ListItem(
+                headlineContent = { Text(s.title, maxLines = 1) },
+                supportingContent = {
+                    Text(
+                        listOfNotNull(s.artist, s.album).joinToString(" · "),
+                        maxLines = 1,
+                    )
+                },
+                leadingContent = { Icon(Icons.Default.MusicNote, null) },
+                trailingContent = {
+                    Icon(
+                        Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                modifier = Modifier.clickable { onPlay(i) },
             )
         }
     }

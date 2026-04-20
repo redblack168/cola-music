@@ -2,6 +2,40 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.5] — 2026-04-20
+
+### Added
+- **我喜欢 tab in Library.** New tab between "歌单" and "收藏专辑" lists
+  every starred song. Tap a row to play from that point with the rest
+  of the liked list as the queue. Empty state hints "在播放页点 ❤ 即可
+  收藏". The album-favorites tab was renamed "收藏专辑" so the two
+  surfaces don't collide.
+- **Now Playing → album navigation.** The "artist · album" subtitle on
+  the Now Playing screen is now tappable: tapping it jumps to the
+  album-detail screen of the playing track. A small album icon
+  (`Icons.Default.Album`) sits next to the subtitle to telegraph the
+  affordance. Spotify pattern; previously the back button only popped
+  to whatever pushed Now Playing (usually Home), forcing a manual
+  Library → search round-trip just to view the album you're already
+  listening to.
+
+### Fixed
+- **Lockscreen / dynamic island lyrics now actually visible.** v0.4.4
+  pushed the live line into `MediaMetadata.description` + `subtitle`,
+  but Samsung One UI's dynamic island and lockscreen render the
+  **artist** field, not description/subtitle. v0.4.5 shadows the
+  artist field with the rolling lyric line (caching the original
+  artist per `mediaId` so it can be restored when the next song
+  starts). Title stays the song name; subtitle/description are still
+  set as a belt-and-braces for any UI that does read those.
+
+### Internal
+- `MusicService.transitionListener` evicts the cached original-artist
+  entry when the player advances to a new mediaId.
+- versionCode 32, versionName 0.4.5.
+
+
+
 ## [0.4.4] — 2026-04-20
 
 ### Added — Spotify-parity feature bundle

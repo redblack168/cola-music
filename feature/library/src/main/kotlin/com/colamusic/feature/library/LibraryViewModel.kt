@@ -6,8 +6,10 @@ import com.colamusic.core.common.Outcome
 import com.colamusic.core.model.Album
 import com.colamusic.core.model.Artist
 import com.colamusic.core.model.Playlist
+import com.colamusic.core.model.Song
 import com.colamusic.core.network.ActiveServerPreferences
 import com.colamusic.core.network.MusicServerRepository
+import com.colamusic.core.player.PlayerController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +24,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val repo: MusicServerRepository,
+    private val controller: PlayerController,
     activeServer: ActiveServerPreferences,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LibraryState())
@@ -41,16 +44,24 @@ class LibraryViewModel @Inject constructor(
             val artists = repo.artists()
             val playlists = repo.playlists()
             val starred = repo.starred()
+            val starredResult = (starred as? Outcome.Success)?.value
             _state.update {
                 it.copy(
                     loading = false,
                     albums = (albums as? Outcome.Success)?.value.orEmpty(),
                     artists = (artists as? Outcome.Success)?.value.orEmpty(),
                     playlists = (playlists as? Outcome.Success)?.value.orEmpty(),
-                    starredAlbums = (starred as? Outcome.Success)?.value?.albums.orEmpty(),
+                    starredAlbums = starredResult?.albums.orEmpty(),
+                    starredSongs = starredResult?.songs.orEmpty(),
                 )
             }
         }
+    }
+
+    fun playLikedFrom(index: Int) {
+        val songs = _state.value.starredSongs
+        if (songs.isEmpty() || index !in songs.indices) return
+        controller.playQueue(songs, startIndex = index)
     }
 
     fun loadMoreAlbums() {
@@ -70,4 +81,5 @@ data class LibraryState(
     val artists: List<Artist> = emptyList(),
     val playlists: List<Playlist> = emptyList(),
     val starredAlbums: List<Album> = emptyList(),
+    val starredSongs: List<Song> = emptyList(),
 )

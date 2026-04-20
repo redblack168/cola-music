@@ -169,7 +169,10 @@ fun ColaNavGraph(
                 LanguagePickerScreen(onBack = { nav.popBackStack() })
             }
             composable(Routes.NowPlaying) {
-                NowPlayingScreen(onBack = { nav.popBackStack() })
+                NowPlayingScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenAlbum = { id -> nav.navigate(Routes.album(id)) },
+                )
             }
             composable(
                 route = Routes.Album,

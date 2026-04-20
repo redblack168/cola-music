@@ -51,6 +51,10 @@ class MusicService : MediaLibraryService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var lyricTickerJob: Job? = null
     private var lastLyricLine: String? = null
+    /** songId → original artist string from the unmodified MediaItem. We
+     *  shadow the artist field with the live lyric line, so on track change
+     *  (or when the setting flips off) we need to know what to restore. */
+    private val originalArtist = HashMap<String, String?>()
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -71,13 +75,18 @@ class MusicService : MediaLibraryService() {
 
     /**
      * Pushes the currently-active synced-lyric line into the playing
-     * MediaItem's metadata (as description + subtitle) so the system
-     * notification — and therefore the Samsung Z Fold 7 cover display,
-     * the dynamic island tile, and the lockscreen — all show the live
-     * lyric. Gated by [LyricNotificationPreferences]; off by default.
+     * MediaItem's **artist** field, plus subtitle/description. The artist
+     * field is the one that Samsung's One UI dynamic island and the system
+     * lockscreen actually display — subtitle/description alone don't reach
+     * the dynamic island tile.
      *
+     * The original artist is cached in [originalArtist] keyed by mediaId
+     * and restored on track change (see [restoreOriginalArtist]) and when
+     * the setting flips off.
+     *
+     * Gated by [LyricNotificationPreferences]; off by default.
      * Uses [androidx.media3.common.Player.replaceMediaItem] on a metadata-
-     * only diff so ExoPlayer does NOT rebuffer — only the session refreshes.
+     * only diff so ExoPlayer does NOT rebuffer.
      */
     private fun startLyricTicker() {
         lyricTickerJob?.cancel()
@@ -86,7 +95,19 @@ class MusicService : MediaLibraryService() {
                 val enabled = runCatching { lyricNotificationPrefs.enabledNow() }.getOrDefault(false)
                 val p = player
                 val ly = lyricsRepo.current.value
-                if (enabled && p != null && ly != null && ly.isSynced && !ly.isEmpty) {
+
+                if (!enabled) {
+                    // Setting just flipped off — restore the real artist on
+                    // the current item if we'd shadowed it.
+                    if (lastLyricLine != null) {
+                        restoreOriginalArtistOnCurrent(p)
+                        lastLyricLine = null
+                    }
+                    delay(750L)
+                    continue
+                }
+
+                if (p != null && ly != null && ly.isSynced && !ly.isEmpty) {
                     val pos = runCatching { p.currentPosition }.getOrDefault(0L)
                     val line = activeLineAt(ly, pos)
                     if (line != null && line != lastLyricLine) {
@@ -94,23 +115,44 @@ class MusicService : MediaLibraryService() {
                         val idx = runCatching { p.currentMediaItemIndex }.getOrDefault(-1)
                         val item = runCatching { p.currentMediaItem }.getOrNull()
                         if (idx >= 0 && item != null) {
+                            // Cache original artist once per song so we can
+                            // restore on track change.
+                            val songId = item.mediaId
+                            if (!originalArtist.containsKey(songId)) {
+                                originalArtist[songId] = item.mediaMetadata.artist?.toString()
+                            }
                             val updated = item.buildUpon()
                                 .setMediaMetadata(
                                     item.mediaMetadata.buildUpon()
-                                        .setDescription(line)
+                                        .setArtist(line)
                                         .setSubtitle(line)
+                                        .setDescription(line)
                                         .build()
                                 ).build()
                             runCatching { p.replaceMediaItem(idx, updated) }
                         }
                     }
-                } else if (!enabled) {
-                    // Reset so turning the setting back on refreshes immediately.
-                    lastLyricLine = null
                 }
-                delay(500L)
+                delay(400L)
             }
         }
+    }
+
+    private fun restoreOriginalArtistOnCurrent(p: androidx.media3.exoplayer.ExoPlayer?) {
+        val player = p ?: return
+        val idx = runCatching { player.currentMediaItemIndex }.getOrDefault(-1)
+        val item = runCatching { player.currentMediaItem }.getOrNull() ?: return
+        if (idx < 0) return
+        val original = originalArtist[item.mediaId] ?: return
+        val updated = item.buildUpon()
+            .setMediaMetadata(
+                item.mediaMetadata.buildUpon()
+                    .setArtist(original)
+                    .setSubtitle(null)
+                    .setDescription(null)
+                    .build()
+            ).build()
+        runCatching { player.replaceMediaItem(idx, updated) }
     }
 
     private fun activeLineAt(ly: com.colamusic.core.model.Lyrics, positionMs: Long): String? {
@@ -120,6 +162,19 @@ class MusicService : MediaLibraryService() {
             if (t <= positionMs) current = line.text else break
         }
         return current
+    }
+
+    private val transitionListener = object : androidx.media3.common.Player.Listener {
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // Force a fresh lyric write on the new item; the prior item's
+            // shadowed artist isn't restored (it isn't playing anymore) but
+            // we drop its cache entry to keep the map bounded.
+            val previousId = lastLyricLine?.let { _ -> originalArtist.keys.firstOrNull() }
+            if (previousId != null && previousId != mediaItem?.mediaId) {
+                originalArtist.remove(previousId)
+            }
+            lastLyricLine = null
+        }
     }
 
     private fun buildSession() {
@@ -139,6 +194,7 @@ class MusicService : MediaLibraryService() {
             .setHandleAudioBecomingNoisy(true)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
             .build()
+        exo.addListener(transitionListener)
         this.player = exo
 
         // Tapping the media notification / dynamic-island tile should land
