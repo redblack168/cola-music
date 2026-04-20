@@ -114,7 +114,9 @@ class UpdateChecker @Inject constructor(
     /** Kicks a DownloadManager job. Returns the queued download id. */
     fun download(info: UpdateInfo): Long {
         val dir = File(context.getExternalFilesDir(null), "updates").apply { mkdirs() }
-        // Wipe prior APKs so we don't accumulate over versions.
+        // Wipe prior APKs so we don't accumulate over versions, and so a
+        // half-finished previous attempt can't get reused as the install
+        // source.
         dir.listFiles { f -> f.name.endsWith(".apk") }?.forEach { runCatching { it.delete() } }
         val target = File(dir, info.apkName)
 
@@ -122,9 +124,17 @@ class UpdateChecker @Inject constructor(
         val req = DownloadManager.Request(Uri.parse(info.apkUrl))
             .setTitle("可乐音乐 ${info.latestVersion}")
             .setDescription("下载更新中")
+            .setMimeType("application/vnd.android.package-archive")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationUri(Uri.fromFile(target))
             .setAllowedOverMetered(true)
+            // GitHub release downloads 302 to objects.githubusercontent.com;
+            // declare we accept APK bytes and never serve us a cached HTML
+            // edge response. DownloadManager follows 30x by default since
+            // API 24, but the explicit headers help when intermediate proxies
+            // are in play.
+            .addRequestHeader("Accept", "application/vnd.android.package-archive,*/*;q=0.8")
+            .addRequestHeader("Cache-Control", "no-cache")
         return dm.enqueue(req)
     }
 

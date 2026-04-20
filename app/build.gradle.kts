@@ -45,8 +45,8 @@ android {
         applicationId = "com.colamusic"
         minSdk = 26
         targetSdk = 34
-        versionCode = 34
-        versionName = "0.4.7"
+        versionCode = 35
+        versionName = "0.4.8"
         vectorDrawables { useSupportLibrary = true }
         resourceConfigurations.addAll(listOf("en", "zh-rCN", "zh-rTW"))
     }
@@ -58,6 +58,15 @@ android {
                 storePassword = releaseSigningProps.getProperty("storePassword")
                 keyAlias = releaseSigningProps.getProperty("keyAlias")
                 keyPassword = releaseSigningProps.getProperty("keyPassword")
+                // Belt-and-braces: explicitly enable v1+v2+v3 signing.
+                // AGP 8.x defaults v1Signing to false when minSdk>=24, which
+                // some Samsung One UI installer flows have been observed to
+                // reject ("解析失败 / file not intact") — particularly on
+                // cross-version sideload upgrades. Adding v1+v3 alongside the
+                // already-present v2 widens compatibility with no real cost.
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }

@@ -2,6 +2,36 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.8] — 2026-04-20
+
+### Fixed — install path
+
+- **v0.4.7's install fail ("file not intact / 解析失败").** Two-pronged
+  hardening:
+  1. **Triple-scheme signing.** Release APKs now sign under v1 + v2 + v3
+     simultaneously. AGP 8.x defaulted v1 off because `minSdk=26` accepts
+     v2; some Samsung One UI installer flows have been observed to reject
+     v2-only APKs on cross-version sideload upgrades. v1 + v2 + v3 maxes
+     out compatibility for free.
+  2. **Validate before install.** `UpdateInstallReceiver` now checks the
+     downloaded file before opening the system installer:
+       - rejects anything < 1 MB (release APK is ~17 MB; an HTML error
+         page or truncated response would fall under this)
+       - rejects anything whose first 4 bytes aren't the ZIP local-file-
+         header magic (`PK\x03\x04`)
+     Failure surfaces a Chinese toast pointing the user to the GitHub
+     release page instead of feeding garbage to PackageInstaller (which
+     historically displayed the useless "解析失败" message).
+
+### Internal
+- `DownloadManager.Request` now carries a real APK MIME type plus
+  `Accept: application/vnd.android.package-archive` and `Cache-Control:
+  no-cache` headers. Reduces the chance an intermediate proxy serves a
+  cached redirect / HTML error response.
+- versionCode 35, versionName 0.4.8.
+
+
+
 ## [0.4.7] — 2026-04-20
 
 ### Stability + battery — Codex adversarial review fallout
