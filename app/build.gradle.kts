@@ -111,6 +111,26 @@ android {
         }
     }
 
+    // Product flavors: same codebase, two distribution channels.
+    //   github    — direct sideload; ships the in-app updater (pulls release
+    //               APKs from GitHub Releases and invokes PackageInstaller).
+    //   playStore — compliant with Play policy §"Device and Network Abuse",
+    //               which forbids self-updating outside Google Play. The
+    //               updater sources and REQUEST_INSTALL_PACKAGES permission
+    //               are excluded from this variant via the flavor-scoped
+    //               sourceset at app/src/github/.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("github") {
+            dimension = "distribution"
+            buildConfigField("Boolean", "IN_APP_UPDATER", "true")
+        }
+        create("playStore") {
+            dimension = "distribution"
+            buildConfigField("Boolean", "IN_APP_UPDATER", "false")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

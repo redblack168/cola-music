@@ -9,8 +9,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Needed by the in-app updater to open the downloaded APK's install prompt. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- REQUEST_INSTALL_PACKAGES, the FileProvider, and UpdateInstallReceiver
+         are declared in app/src/github/AndroidManifest.xml. The Play Store
+         flavor strips them all so the app complies with Google Play's
+         "Device and Network Abuse" policy (no sideload-install). -->
     <!-- Cleartext for local Navidrome (LAN) unless user supplies https -->
     <application
         android:name=".ColaApp"
@@ -58,25 +60,5 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
-
-        <!-- FileProvider so the in-app updater can hand a content:// URI to
-             the system package installer. -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_provider_paths" />
-        </provider>
-
-        <receiver
-            android:name="com.colamusic.update.UpdateInstallReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

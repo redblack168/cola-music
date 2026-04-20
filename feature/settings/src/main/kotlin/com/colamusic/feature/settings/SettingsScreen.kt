@@ -41,6 +41,10 @@ fun SettingsScreen(
     onOpenTheme: () -> Unit,
     onOpenLanguage: () -> Unit,
     onCheckForUpdate: () -> Unit = {},
+    /** Play Store variant passes false. The button is hidden instead of
+     *  no-op so we don't confuse users who would otherwise tap it and
+     *  see nothing happen. */
+    allowInAppUpdate: Boolean = true,
     vm: SettingsViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -216,12 +220,13 @@ fun SettingsScreen(
         Spacer(Modifier.height(16.dp))
         HorizontalDivider()
         Spacer(Modifier.height(12.dp))
-        Button(
-            onClick = onCheckForUpdate,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("检查更新") }
-
-        Spacer(Modifier.height(12.dp))
+        if (allowInAppUpdate) {
+            Button(
+                onClick = onCheckForUpdate,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("检查更新") }
+            Spacer(Modifier.height(12.dp))
+        }
         Button(onClick = { vm.logout(onLoggedOut) }, modifier = Modifier.fillMaxWidth()) {
             Text("退出登录")
         }

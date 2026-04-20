@@ -154,6 +154,10 @@ fun ColaNavGraph(
                     onOpenTheme = { nav.navigate(Routes.Theme) },
                     onOpenLanguage = { nav.navigate(Routes.Language) },
                     onCheckForUpdate = { checkUpdate.value = true },
+                    // Hidden on the Play Store flavor so the button doesn't
+                    // appear at all — updater sources aren't compiled into
+                    // that variant.
+                    allowInAppUpdate = BuildConfig.IN_APP_UPDATER,
                 )
             }
             composable(Routes.Diagnostics) {
