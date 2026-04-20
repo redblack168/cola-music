@@ -1,7 +1,7 @@
 # Google Play Store — Upload Pack
 
-Version: **0.4.8** (versionCode 35, flavor `playStore`)
-AAB: `/tmp/cola-music-v0.4.8-playStore.aab` (16.1 MB)
+Version: **0.4.9** (versionCode 36, flavor `playStore`, targetSdk 35)
+AAB: `/tmp/cola-music-v0.4.9-playStore.aab` (16.1 MB)
 Generated: 2026-04-20
 
 Everything you need to paste into Play Console, top to bottom. Sections are
@@ -163,7 +163,7 @@ Source and issue tracker: https://github.com/redblack168/cola-music
 | App icon | 512×512 PNG (no transparency) | Yes | Reuse the Cola-cat launcher foreground, composited on the gradient background; export from `app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp` scaled up, or re-render the vector at 512 |
 | **Feature graphic** | **1024×500 PNG / JPG, NO alpha** | **Yes** | See §1.5 for the layout spec you should build in Figma/Canva |
 | Phone screenshots | 1080×2340 (Fold 7 inner) or 1440×3040; min 320px, max 3840px, 16:9–9:16 | Yes (min 2, up to 8) | See §1.6 |
-| Tablet / 7-inch / 10-inch screenshots | Optional | No | Skip for v0.4.8; add later if you want tablet placement |
+| Tablet / 7-inch / 10-inch screenshots | Optional | No | Skip for v0.4.9; add later if you want tablet placement |
 
 ### 1.5 Feature graphic layout spec (1024×500)
 
@@ -317,19 +317,19 @@ Every question under "App content → Additional declarations" → **No**.
 
 1. **Left nav → Testing → Internal testing** (NOT Production — internal
    testing has 1 h review and up to 100 testers).
-2. **Create new release** → upload `/tmp/cola-music-v0.4.8-playStore.aab`.
+2. **Create new release** → upload `/tmp/cola-music-v0.4.9-playStore.aab`.
 3. When prompted about **Play App Signing**: accept (let Google manage the
    app signing key). Your upload key is the release keystore; Google
    re-signs for distribution. This is one-way — once accepted, you can't
    opt out.
-4. **Release name**: `0.4.8 (35)` (the defaults auto-populate, fine to
+4. **Release name**: `0.4.9 (36)` (the defaults auto-populate, fine to
    keep).
 5. **Release notes** (one entry per language; paste the English below,
    optional Chinese right after):
 
 English:
 ```
-0.4.8 — Cola Music Play Store launch.
+0.4.9 — Cola Music Play Store launch.
 
 • Lossless streaming from Navidrome / Jellyfin / Emby / Plex
 • Synced lyrics with lockscreen + dynamic-island display
@@ -340,7 +340,7 @@ English:
 
 Chinese (if you added the zh-CN translation):
 ```
-0.4.8 — 可乐音乐 Play Store 首发。
+0.4.9 — 可乐音乐 Play Store 首发。
 
 • 从 Navidrome / Jellyfin / Emby / Plex 无损串流
 • 逐句同步歌词,锁屏和灵动岛实时显示
@@ -377,7 +377,7 @@ Chinese (if you added the zh-CN translation):
 ## 7. Things to check before hitting "Submit for review"
 
 - [ ] Privacy policy URL resolves (`https://redblack168.github.io/cola-music/PRIVACY`)
-- [ ] Screenshots show the actual v0.4.8 UI (not an older version)
+- [ ] Screenshots show the actual v0.4.9 UI (not an older version)
 - [ ] Feature graphic has no transparency (Play auto-rejects RGBA)
 - [ ] App icon is 512×512, no alpha channel
 - [ ] You've accepted Play App Signing when prompted
@@ -410,5 +410,5 @@ Most likely reasons (in order of probability):
 ---
 
 **End of upload pack.** Everything above goes into Play Console, top to
-bottom. The AAB at `/tmp/cola-music-v0.4.8-playStore.aab` is what you
+bottom. The AAB at `/tmp/cola-music-v0.4.9-playStore.aab` is what you
 upload. Ping me with any review feedback and I'll patch.

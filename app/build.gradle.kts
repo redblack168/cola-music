@@ -39,14 +39,14 @@ fun String.escapeBuildConfig() = replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.colamusic"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.colamusic"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 35
-        versionName = "0.4.8"
+        targetSdk = 35
+        versionCode = 36
+        versionName = "0.4.9"
         vectorDrawables { useSupportLibrary = true }
         resourceConfigurations.addAll(listOf("en", "zh-rCN", "zh-rTW"))
     }

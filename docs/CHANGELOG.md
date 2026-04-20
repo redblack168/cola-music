@@ -2,6 +2,27 @@
 
 All notable changes to Cola Music are documented here.
 
+## [0.4.9] — 2026-04-20
+
+### Play Store policy: targetSdk 35
+
+- Google Play requires **targetSdkVersion ≥ 35** for all new app
+  submissions (the cut-off passed while we were on 34; Play Console
+  flagged the rejection at upload time).
+- Bumped `compileSdk` and `targetSdk` from 34 → 35 in `app/` and every
+  `core/` + `feature/` module so the whole build tree compiles against
+  the same API surface. `minSdk` stays at 26 — no change to device
+  compatibility.
+- Installed `platforms;android-35` and `build-tools;35.0.0` locally.
+- Rebuilt `app-playStore-release.aab` (16.1 MB). Manifest verified via
+  aapt2: `minSdkVersion=26`, `targetSdkVersion=35`, `versionCode=36`,
+  `versionName=0.4.9`.
+
+### Internal
+- versionCode 36, versionName 0.4.9.
+
+
+
 ## [0.4.8] — 2026-04-20
 
 ### Fixed — install path

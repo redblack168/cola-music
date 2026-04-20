@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.colamusic.core.diagnostics"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig { minSdk = 26 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
